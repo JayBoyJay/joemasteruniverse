@@ -500,7 +500,7 @@ export class Wrestler {
     const n = [[0, 1], [1, 0], [0, -1], [-1, 0]][side];
     this.elimFrom = this.pos.clone();
     const along = side % 2 === 0 ? this.pos.x : this.pos.y;
-    const outer = APRON + 0.75;
+    const outer = this.m.arena.outDist || APRON + 0.75;
     this.elimTo = side % 2 === 0 ? new THREE.Vector2(along * 0.9, n[1] * outer) : new THREE.Vector2(n[0] * outer, along * 0.9);
     this.elimYaw = Math.atan2(-n[0], -n[1]); // face the ring
     this.elimT = 0; this.elimDur = 1.4; this.elimLift = 0;
@@ -511,7 +511,8 @@ export class Wrestler {
     const e = ease(u);
     this.pos.lerpVectors(this.elimFrom, this.elimTo, e);
     const offEdge = Math.max(0, (u - 0.55) / 0.45);
-    this.y = RING_H * (1 - ease(offEdge));
+    const outY = this.m.arena.outY ?? 0;
+    this.y = RING_H + (outY - RING_H) * ease(offEdge);
     this.elimLift = Math.sin(offEdge * PI) * 0.3;
     if (u >= 1) this.yaw = this.elimYaw;
   }

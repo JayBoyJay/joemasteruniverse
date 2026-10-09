@@ -48,8 +48,29 @@ Everyone has Joe's face, beard and shades by default. Under "Use my own face" on
 | EARTH-69 | **The Aubergine**: full eggplant mascot suit | EGGPLANT MASTER |
 | EARTH-2001 | **One Giant Slam**: space suit and bubble helmet | SPACE MASTER |
 | EARTH-7-SEAS | **Captain Podbeard**: tricorn, eye patch, puffy shirt | CAPTAIN MASTER |
+| EARTH-TIARA | **Royal Highness**: pink ball gown, tiara, blonde wig, heart shades | PRINCESS MASTER |
+| EARTH-405 | **No Days Off**: huge arms, GYM BRO stringer, lifting belt, backwards cap | GYM BRO MASTER |
+| EARTH-BRINE | **The Big Dill**: full pickle suit, face through the hole | PICKLE MASTER |
 
 All outfits are defined in `js/characters.js`. To add another, copy an entry in `COSTUMES` and add its id, title and universe to the list near the top of the script in `play.html`.
+
+## Maps
+
+Pick the map in the lobby with the ◀ ▶ arrows (or the arrow keys). Any phone can also tap **MAP** on its lobby screen to switch to the next one. The choice is remembered.
+
+| Map | What's there |
+|---|---|
+| **The Arena** | the full ring, crowd, billboards and titantron |
+| **Back Street** | brick alley, graffiti, dumpster, bins, pallets, a burning barrel, fire escape and a few onlookers |
+| **Podcast Studio** | the Joe Master Pod set: desk, mics, ON AIR sign, big screen, couch and two producers |
+| **The Shed** | corrugated iron, workbench, tools, beer fridge, esky, tyres, mower, dartboard and the boys at the roller door |
+| **Hell** | a ring over a lava lake, burning braziers, chains, a giant skull and a demon crowd |
+
+The ring-less maps have walls instead of ropes: you bounce off them when running. Maps are in `js/maps.js`.
+
+## On a TV
+
+The lobby is laid out for a 16:9 screen and scales to whatever size the browser window is. Press `F` (or the ⛶ FULLSCREEN button) to go full screen.
 
 ## The legend (as Joe tells it)
 
@@ -75,7 +96,7 @@ The game believes everything Joe believes about himself:
 - Free-for-all: pin someone for a 3-count and they're out. The last Master standing wins.
 
 Keyboard player on the PC: `WASD` move, `J` strike, `K` grab, `Shift` run, `L` block, `I` taunt.
-Other keys: `Enter` start, `C` add a CPU, `P` cycle the retro filter, `M` announcer voice, `N` music, `Esc` back to the lobby.
+Other keys: `Enter` start, `C` add a CPU, `P` cycle the retro filter, `M` announcer voice, `N` music, `◀ ▶` change map, `F` fullscreen, `Esc` back to the lobby.
 
 ## Files
 

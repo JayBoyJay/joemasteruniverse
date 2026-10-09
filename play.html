@@ -112,6 +112,8 @@
   #taunt { right: max(18px, env(safe-area-inset-right)); top: 96px; }
   #start { left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: linear-gradient(#ff5a4f, #c81d25); display: none; }
   #start.dn { transform: translate(-50%, 2px); }
+  #mapBtn { left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 56px); transform: translateX(-50%); background: linear-gradient(#7a4ad8, #3a1a7a); display: none; white-space: nowrap; }
+  #mapBtn.dn { transform: translate(-50%, 2px); }
   #flash { position: absolute; inset: 0; background: #ff0000; opacity: 0; pointer-events: none; transition: opacity .25s; }
   #msg { position: fixed; inset: 0; display: none; place-items: center; background: #000c; z-index: 9; text-align: center; padding: 30px; }
   #msg.on { display: grid; }
@@ -197,6 +199,7 @@
   </div>
   <div class="pill" id="taunt" data-b="16">TAUNT</div>
   <div class="pill" id="start">START MATCH</div>
+  <div class="pill" id="mapBtn">MAP ▶</div>
   <div id="flash"></div>
 </section>
 
@@ -210,6 +213,7 @@
     ['disco', 'DISCO INFERNO', 'EARTH-1977'], ['school', 'SCHOOL DAYS', 'EARTH-831'], ['samurai', 'THE LAST SAMURAI', 'EARTH-1600'],
     ['luchador', 'LUCHA LIBRE', 'EARTH-619'], ['suit', 'CEO OF PODCASTING', 'EARTH-$$$'], ['eggplant', 'THE AUBERGINE', 'EARTH-69'],
     ['astronaut', 'ONE GIANT SLAM', 'EARTH-2001'], ['pirate', 'CAPTAIN PODBEARD', 'EARTH-7-SEAS'],
+    ['princess', 'ROYAL HIGHNESS', 'EARTH-TIARA'], ['gymbro', 'NO DAYS OFF', 'EARTH-405'], ['pickle', 'THE BIG DILL', 'EARTH-BRINE'],
   ];
   const randomCostume = (not) => { const l = COSTUMES.filter(c => c[0] !== not); return l[Math.floor(Math.random() * l.length)][0]; };
   const masterName = raw => { let n = String(raw || '').toUpperCase().replace(/[^A-Z0-9 .'\-!?]/g, '').replace(/\s+/g, ' ').trim().replace(/\s*MASTER$/, '').trim(); return (n || 'ROOKIE').slice(0, 12) + ' MASTER'; };
@@ -343,7 +347,7 @@
   let room = cleanCode(new URLSearchParams(location.search).get('room'));
   let mode = null;
   const modeReady = (async () => {
-    if (room) { mode = 'peer'; try { localStorage.setItem('jmu_last_room', room); } catch {} return; }
+    if (room) { mode = 'peer'; try { localStorage.setItem('jmu_last_room', room); } catch {} $('roomCode').value = room; $('roomRow').style.display = ''; return; }
     if (location.protocol !== 'https:') try {
       const r = await fetch('info', { cache: 'no-store' });
       const j = await r.json();
@@ -391,7 +395,7 @@
         peer = new Peer({ debug: 0 });
         peer.on('error', err => {
           const t = err && err.type;
-          if (t === 'peer-unavailable') status('GAME SCREEN NOT FOUND — CHECK ROOM ' + room);
+          if (t === 'peer-unavailable') status('NO GAME SCREEN WITH ROOM ' + room + ' — CHECK THE CODE ON THE TV', true);
           else status('CONNECTION PROBLEM — RETRYING…');
           if (conn && !conn.open) { try { conn.close(); } catch {} conn = null; }
           connecting = false; retryLater(2500);
@@ -406,7 +410,7 @@
         if (c.open || conn !== c) return;
         try { c.close(); } catch {}
         conn = null; connecting = false;
-        status('GAME SCREEN NOT FOUND — CHECK ROOM ' + room); retryLater(2500);
+        status('NO GAME SCREEN WITH ROOM ' + room + ' — CHECK THE CODE ON THE TV', true); retryLater(2500);
       }, 9000);
       c.on('open', () => { clearTimeout(openTimer); retry = 0; connecting = false; lastRx = Date.now(); status('JOINING…'); c.send({ t: 'hello', id, profile }); });
       c.on('data', m => { lastRx = Date.now(); if (typeof m === 'string') { try { m = JSON.parse(m); } catch { return; } } onMsg(m); });
@@ -448,6 +452,8 @@
     else if (m.t === 'phase') {
       phase = m.phase;
       $('start').style.display = m.canStart ? 'block' : 'none';
+      $('mapBtn').style.display = m.canMap ? 'block' : 'none';
+      if (m.map) $('mapBtn').textContent = 'MAP: ' + m.map + ' ▶';
       if (m.msg !== undefined) status(m.msg);
     }
     else if (m.t === 'st') {
@@ -571,6 +577,10 @@
   st.addEventListener('pointerdown', e => { e.preventDefault(); st.classList.add('dn'); send({ t: 'start' }); if (navigator.vibrate) navigator.vibrate(20); });
   st.addEventListener('pointerup', () => st.classList.remove('dn'));
   st.addEventListener('pointercancel', () => st.classList.remove('dn'));
+  const mb = $('mapBtn');
+  mb.addEventListener('pointerdown', e => { e.preventDefault(); mb.classList.add('dn'); send({ t: 'map', dir: 1 }); if (navigator.vibrate) navigator.vibrate(15); });
+  mb.addEventListener('pointerup', () => mb.classList.remove('dn'));
+  mb.addEventListener('pointercancel', () => mb.classList.remove('dn'));
 
   // stop the page from scrolling / zooming on the pad
   document.addEventListener('gesturestart', e => e.preventDefault());

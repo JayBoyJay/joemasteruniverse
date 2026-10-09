@@ -5,6 +5,7 @@ import { canvasTex, drawDefaultFace, drawPhotoFace, shade } from './tex.js';
 export const BUILDS = {
   slim: { w: 0.86, arm: 0.86, leg: 0.92, belly: 0.9, head: 1.12 },
   average: { w: 1.0, arm: 1.0, leg: 1.0, belly: 1.0, head: 1.12 },
+  buff: { w: 1.14, arm: 1.42, leg: 1.04, belly: 0.92, head: 1.06 },
   heavy: { w: 1.28, arm: 1.18, leg: 1.12, belly: 1.45, head: 1.1 },
 };
 
@@ -124,9 +125,15 @@ export class Rig {
     const belt = cyl(0.24 * w, 0.24 * w, 0.06, beltM, 8, 0.7 * B.belly);
     belt.position.y = 0.1; this.hips.add(belt);
     if (L && L.skirt) {
-      const sm = this._spec(L.skirt, [64, 32], { side: D });
-      const skirt = cyl(0.245 * w, 0.37 * w, 0.32, sm, 12, 0.8 * B.belly, true);
-      skirt.position.y = -0.15; this.hips.add(skirt);
+      const S = typeof L.skirt === 'object' ? L.skirt : { mat: L.skirt };
+      const len = S.len || 0.32, bot = S.bottom || 0.37;
+      const sm = this._spec(S.mat, S.size || [64, 32], { side: D });
+      const skirt = cyl(0.245 * w, bot * w, len, sm, 14, 0.8 * B.belly, true);
+      skirt.position.y = -0.01 - len / 2; this.hips.add(skirt);
+      if (S.hem) {
+        const hem = new THREE.Mesh(new THREE.TorusGeometry(bot * w, 0.025, 4, 16), this._m(S.hem));
+        hem.rotation.x = Math.PI / 2; hem.scale.y = 0.8 * B.belly; hem.position.y = -0.01 - len; this.hips.add(hem);
+      }
     }
 
     // ---------- torso ----------
@@ -301,8 +308,8 @@ export class Rig {
     const g = new THREE.Group(); g.position.set(0, Hh * 0.05, D * 0.5 + 0.004); head.add(g);
     this.extras.photoHide.push(g);
     const fm = this._m('#120c08');
-    if (L.glasses === 'dark' || L.glasses === 'red') {
-      const lm = L.glasses === 'red' ? this._m('#c8141a', { emissive: 0x3a0404 }) : this._m('#2a1a0a', { emissive: 0x1a0e04 });
+    if (L.glasses === 'dark' || L.glasses === 'red' || L.glasses === 'pink') {
+      const lm = L.glasses === 'red' ? this._m('#c8141a', { emissive: 0x3a0404 }) : L.glasses === 'pink' ? this._m('#ff4fb8', { emissive: 0x3a0420 }) : this._m('#2a1a0a', { emissive: 0x1a0e04 });
       for (const sx of [-1, 1]) {
         const lens = new THREE.Mesh(new THREE.CylinderGeometry(W * 0.17, W * 0.17, 0.012, 10), lm);
         lens.rotation.set(Math.PI / 2, 0, 0); lens.scale.set(1, 1, 0.62);
@@ -373,6 +380,36 @@ export class Rig {
         bubble.scale.set(W * 1.75, Hh * 1.6, D * 1.75); add(bubble, 0, -Hh * 0.02, 0);
         const collar = new THREE.Mesh(new THREE.TorusGeometry(W * 0.66, 0.05, 6, 14), this._m('#c8c8cc'));
         collar.rotation.x = Math.PI / 2; add(collar, 0, -Hh * 0.72, 0);
+        break;
+      }
+      case 'tiara': {
+        const gm = this._m('#ffd84a', { emissive: 0x3a2a00 }), jm = this._m('#7af0ff', { emissive: 0x0a3a40 }), pm = this._m('#ff4fb8', { emissive: 0x3a0420 });
+        const t = new THREE.Group(); t.position.set(0, Hh * 0.42, D * 0.06); t.rotation.x = -0.25; head.add(t);
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(W * 0.5, W * 0.52, Hh * 0.07, 14, 1, true, -Math.PI * 0.5, Math.PI), gm);
+        band.material.side = THREE.DoubleSide; band.scale.z = D / W; t.add(band);
+        for (let i = -2; i <= 2; i++) {
+          const a = i * 0.32, hgt = Hh * (0.22 - Math.abs(i) * 0.05);
+          const sp = new THREE.Mesh(new THREE.ConeGeometry(0.025, hgt, 4), gm);
+          sp.position.set(Math.sin(a) * W * 0.5, hgt / 2, Math.cos(a) * D * 0.5); sp.rotation.x = 0.1; t.add(sp);
+        }
+        const jewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.035), jm); jewel.position.set(0, Hh * 0.06, D * 0.53); t.add(jewel);
+        for (const sx of [-1, 1]) { const j = new THREE.Mesh(new THREE.OctahedronGeometry(0.022), pm); j.position.set(sx * W * 0.3, Hh * 0.04, D * 0.44); t.add(j); }
+        break;
+      }
+      case 'cap': { // backwards baseball cap
+        const m = this._m(hc || '#d8202a'), wm = this._m('#f4f4f4');
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), m);
+        dome.scale.set(W * 1.12, Hh * 0.8, D * 1.12); add(dome, 0, Hh * 0.16, -D * 0.04);
+        const bill = new THREE.Mesh(new THREE.CylinderGeometry(W * 0.42, W * 0.42, 0.02, 10, 1, false, Math.PI * 0.5, Math.PI), m);
+        bill.scale.set(1, 1, 1.1); add(bill, 0, Hh * 0.18, -D * 0.5);
+        const btn = ell(0.05, 0.03, 0.05, wm, 6); add(btn, 0, Hh * 0.56, -D * 0.04);
+        const strap = new THREE.Mesh(new THREE.BoxGeometry(W * 0.36, Hh * 0.09, 0.02), wm); add(strap, 0, Hh * 0.28, D * 0.5);
+        break;
+      }
+      case 'nub': { // pickle end
+        const gm = this._m('#4a7a22');
+        add(ell(W * 0.55, Hh * 0.35, D * 0.55, gm, 8), 0, Hh * 0.5, -D * 0.02);
+        add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.07, 5), this._m('#8a7a3a')), 0, Hh * 0.7, -D * 0.02);
         break;
       }
       case 'stalk': {

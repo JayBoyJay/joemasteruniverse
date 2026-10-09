@@ -19,7 +19,7 @@ export const BIO = {
 };
 
 // ---------------------------------------------------------------- faces
-function makeFace({ lens = 'dark', mask = null } = {}) {
+function makeFace({ lens = 'dark', mask = null, hood = null, lips = null, hair = HAIR } = {}) {
   return function face(c, w, h) {
     c.fillStyle = SKIN; c.fillRect(0, 0, w, h);
     c.globalAlpha = 0.25; c.fillStyle = '#d9826a';
@@ -35,17 +35,24 @@ function makeFace({ lens = 'dark', mask = null } = {}) {
       }
       c.beginPath(); c.moveTo(w / 2, h * 0.02); c.lineTo(w / 2, h * 0.3); c.stroke();
       c.fillStyle = mask.trim; c.beginPath(); c.moveTo(w / 2, h * 0.05); c.lineTo(w * 0.42, h * 0.2); c.lineTo(w * 0.58, h * 0.2); c.fill();
+    } else if (hood) { // costume hood: only an oval of face shows
+      c.fillStyle = hood; c.fillRect(0, 0, w, h);
+      c.save(); c.globalCompositeOperation = 'destination-out';
+      c.beginPath(); c.ellipse(w / 2, h * 0.56, w * 0.43, h * 0.42, 0, 0, 7); c.fill(); c.restore();
+      c.globalCompositeOperation = 'destination-over'; c.fillStyle = SKIN; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'source-over';
+      c.strokeStyle = shade(hood, -0.3); c.lineWidth = 3; c.beginPath(); c.ellipse(w / 2, h * 0.56, w * 0.43, h * 0.42, 0, 0, 7); c.stroke();
     } else {
       // swept-back hair line
-      c.fillStyle = HAIR;
+      c.fillStyle = hair;
       c.beginPath(); c.moveTo(0, 0); c.lineTo(w, 0); c.lineTo(w, h * 0.2);
       c.quadraticCurveTo(w * 0.75, h * 0.15, w * 0.5, h * 0.19); c.quadraticCurveTo(w * 0.25, h * 0.15, 0, h * 0.22); c.fill();
-      c.strokeStyle = shade(HAIR, 0.25); c.lineWidth = 1.4;
+      c.strokeStyle = shade(hair, 0.25); c.lineWidth = 1.4;
       for (let i = 0; i < 9; i++) { const x = w * (0.08 + i * 0.105); c.beginPath(); c.moveTo(x, h * 0.18); c.quadraticCurveTo(x + 4, h * 0.08, x + 9, 0); c.stroke(); }
-      c.strokeStyle = shade(HAIR, -0.1); c.lineWidth = h * 0.035; c.lineCap = 'round';
+      c.strokeStyle = shade(HAIR, -0.1); c.lineWidth = h * 0.035; if (hood) c.globalAlpha = 0; c.lineCap = 'round';
       c.beginPath(); c.moveTo(w * 0.15, h * 0.35); c.quadraticCurveTo(w * 0.28, h * 0.31, w * 0.42, h * 0.35); c.stroke();
       c.beginPath(); c.moveTo(w * 0.58, h * 0.35); c.quadraticCurveTo(w * 0.72, h * 0.31, w * 0.85, h * 0.35); c.stroke();
     }
+    if (hood) { c.save(); c.beginPath(); c.ellipse(w / 2, h * 0.56, w * 0.41, h * 0.4, 0, 0, 7); c.clip(); }
     // nose
     c.fillStyle = shade(SKIN, -0.22); c.globalAlpha = mask ? 0 : 0.55;
     c.beginPath(); c.moveTo(w * 0.5, h * 0.44); c.lineTo(w * 0.42, h * 0.6); c.lineTo(w * 0.5, h * 0.62); c.fill();
@@ -65,10 +72,11 @@ function makeFace({ lens = 'dark', mask = null } = {}) {
       const x = (i * 37 % 100) / 100 * w, y = h * (0.62 + ((i * 53) % 37) / 100);
       c.beginPath(); c.moveTo(x, y); c.lineTo(x + (x < w / 2 ? -2 : 2), y + 5); c.stroke();
     }
-    c.fillStyle = '#7a3a2c'; c.beginPath(); c.ellipse(w * 0.5, h * 0.74, w * 0.11, h * 0.025, 0, 0, 7); c.fill();
+    c.globalAlpha = 1;
+    c.fillStyle = lips || '#7a3a2c'; c.beginPath(); c.ellipse(w * 0.5, h * 0.74, w * 0.11, h * 0.025, 0, 0, 7); c.fill();
     c.fillStyle = '#4a1c14'; c.fillRect(w * 0.41, h * 0.738, w * 0.18, 1.5);
     // eyewear
-    const lensCol = { dark: ['#5a3a14', '#1a120a', '#2a1a0c'], red: ['#ff6a5a', '#c8141a', '#7a0a10'] }[lens];
+    const lensCol = { dark: ['#5a3a14', '#1a120a', '#2a1a0c'], red: ['#ff6a5a', '#c8141a', '#7a0a10'], pink: ['#ffc0ec', '#ff4fb8', '#a01870'] }[lens];
     if (lensCol) {
       for (const cx of [w * 0.29, w * 0.71]) {
         const g = c.createLinearGradient(0, h * 0.38, 0, h * 0.52);
@@ -88,6 +96,7 @@ function makeFace({ lens = 'dark', mask = null } = {}) {
       c.fillStyle = '#0a0a0a'; c.beginPath(); c.ellipse(w * 0.7, h * 0.45, w * 0.15, h * 0.08, 0, 0, 7); c.fill();
       c.strokeStyle = '#0a0a0a'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, h * 0.3); c.lineTo(w, h * 0.55); c.stroke();
     }
+    if (hood) c.restore();
     const sg = c.createLinearGradient(0, 0, w, 0);
     sg.addColorStop(0, 'rgba(0,0,0,0.25)'); sg.addColorStop(0.18, 'rgba(0,0,0,0)'); sg.addColorStop(0.82, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(0,0,0,0.25)');
     c.fillStyle = sg; c.fillRect(0, 0, w, h);
@@ -308,6 +317,70 @@ function decalFace(c, W, H) {
 }
 function decalEgg(c, W, H) { c.fillStyle = INK; c.fillRect(0, 0, W, H); eggplant(c, W * 0.46, H * 0.55, W * 0.28, -0.9); }
 
+// princess
+function bodice(c, W, H) {
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#ff9ad8'); g.addColorStop(1, '#e8509e');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const cx = W / 2;
+  // sweetheart neckline
+  c.fillStyle = SKIN; c.beginPath(); c.moveTo(cx - 30, 0); c.lineTo(cx + 30, 0); c.lineTo(cx + 26, H * 0.3);
+  c.quadraticCurveTo(cx + 14, H * 0.42, cx, H * 0.32); c.quadraticCurveTo(cx - 14, H * 0.42, cx - 26, H * 0.3); c.fill();
+  c.strokeStyle = '#ffe27a'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(cx - 26, H * 0.3);
+  c.quadraticCurveTo(cx - 14, H * 0.42, cx, H * 0.32); c.quadraticCurveTo(cx + 14, H * 0.42, cx + 26, H * 0.3); c.stroke();
+  // lacing and gems
+  c.strokeStyle = '#ffe27a'; c.lineWidth = 1.2;
+  for (let y = H * 0.45; y < H * 0.95; y += 6) { c.beginPath(); c.moveTo(cx - 6, y); c.lineTo(cx + 6, y + 4); c.moveTo(cx + 6, y); c.lineTo(cx - 6, y + 4); c.stroke(); }
+  c.fillStyle = '#7af0ff'; c.beginPath(); c.arc(cx, H * 0.38, 3, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(cx - 40, 0, 6, H);
+}
+function waist(c, W, H) { c.fillStyle = '#e8509e'; c.fillRect(0, 0, W, H); c.fillStyle = '#ffe27a'; c.fillRect(0, H * 0.75, W, H * 0.25); }
+function gown(c, W, H) {
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#ff8ccc'); g.addColorStop(1, '#ffc6e8');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (let x = 0; x < W; x += 8) { c.fillStyle = 'rgba(160,20,90,0.22)'; c.fillRect(x, 0, 2, H); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x + 3, 0, 2, H); }
+  const r = mulberry(21);
+  for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(255,255,255,${0.4 + r() * 0.6})`; c.fillRect(r() * W, r() * H, 1, 1); }
+  c.fillStyle = '#ffe27a'; c.fillRect(0, H - 6, W, 4);
+  for (let x = 4; x < W; x += 12) { c.beginPath(); c.arc(x, H - 10, 2.5, 0, 7); c.fill(); }
+}
+// gym bro
+function stringer(c, W, H) {
+  chestBare(c, W, H);
+  const cx = W / 2, cloth = '#2b2b33';
+  c.fillStyle = cloth;
+  c.beginPath(); c.moveTo(cx - 9, 0); c.lineTo(cx + 9, 0); c.lineTo(cx + 22, H); c.lineTo(cx - 22, H); c.fill(); // front panel
+  c.fillRect(0, 0, W * 0.14, H); c.fillRect(W * 0.86, 0, W * 0.14, H); // back
+  c.fillStyle = '#ff3a3a'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `900 ${Math.round(H * 0.13)}px Impact, sans-serif`; c.fillText('GYM', cx, H * 0.6); c.fillText('BRO', cx, H * 0.78);
+}
+function stringerLow(c, W, H) {
+  chestBare(c, W, H);
+  c.fillStyle = '#2b2b33'; c.fillRect(W * 0.32, 0, W * 0.36, H); c.fillRect(0, 0, W * 0.14, H); c.fillRect(W * 0.86, 0, W * 0.14, H);
+}
+function liftBelt(c, W, H) {
+  c.fillStyle = '#16161a'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#d8202a'; c.fillRect(0, H * 0.35, W, H * 0.3);
+  c.fillStyle = '#c8c8d0'; c.fillRect(W * 0.44, 0, W * 0.12, H);
+}
+function gymShorts(c, W, H) {
+  c.fillStyle = '#3a3a44'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#ff3a3a'; c.fillRect(W * 0.46, 0, W * 0.08, H);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, H * 0.9, W, H * 0.1);
+}
+// pickle
+function pickleSkin(c, W, H) {
+  const g = c.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, '#3f6b1e'); g.addColorStop(0.5, '#7aa83a'); g.addColorStop(1, '#3f6b1e');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const r = mulberry(13);
+  for (let i = 0; i < W * H / 60; i++) {
+    const x = r() * W, y = r() * H, s = 1.5 + r() * 2.5;
+    c.fillStyle = 'rgba(30,60,10,0.55)'; c.beginPath(); c.arc(x + 0.8, y + 0.8, s, 0, 7); c.fill();
+    c.fillStyle = 'rgba(190,230,110,0.55)'; c.beginPath(); c.arc(x, y, s * 0.7, 0, 7); c.fill();
+  }
+  for (let i = 0; i < W * H / 25; i++) { c.fillStyle = 'rgba(230,255,180,0.35)'; c.fillRect(r() * W, r() * H, 1, 1); }
+}
+
 // ---------------------------------------------------------------- costumes
 const base = {
   build: 'average', hair: HAIR, hairStyle: 'swept', beard: BEARD, glasses: 'dark', signature: 'joe',
@@ -431,6 +504,35 @@ export const COSTUMES = [
       sleeve: { mat: '#efe8d6', long: true, puffy: true },
       trunks: '#1a1a1e', belt: '#b0202a', legs: trousers('#1a1a1e'), legsSize: [32, 32], pants: true,
       shin: '#4a2a14', boots: '#4a2a14',
+    },
+  }),
+  C('princess', {
+    title: 'ROYAL HIGHNESS', cpuName: 'PRINCESS MASTER', universe: 'EARTH-TIARA',
+    look: {
+      face: makeFace({ lens: 'pink', lips: '#e8306e', hair: '#f2cf5a' }), glasses: 'pink', hat: 'tiara', hairStyle: 'wig', hair: '#f2cf5a',
+      torso: bodice, torsoSize: [128, 64], belly: waist, traps: '#ff9ad8',
+      sleeve: { mat: '#ffb0e0', puffy: true, cuff: '#ffe27a' }, gloves: '#fafafa', wrist: '#fafafa',
+      trunks: '#e8509e', belt: '#ffe27a', skirt: { mat: gown, size: [128, 64], len: 0.84, bottom: 0.64, hem: '#ffe27a' },
+      legs: '#ffc6e8', pants: true, boots: '#ff4fb8', shoe: true,
+    },
+  }),
+  C('gymbro', {
+    title: 'NO DAYS OFF', cpuName: 'GYM BRO MASTER', universe: 'EARTH-405', build: 'buff',
+    look: {
+      face: makeFace({ lens: 'dark' }), hat: 'cap', hatColor: '#d8202a',
+      torso: stringer, torsoSize: [128, 64], belly: stringerLow, traps: SKIN,
+      trunks: '#3a3a44', belt: liftBelt, legs: gymShorts, legsSize: [64, 32], legsWide: 1.08,
+      shin: SKIN, wrist: '#16161a', boots: '#f4f4f4', shoe: true,
+    },
+  }),
+  C('pickle', {
+    title: 'THE BIG DILL', cpuName: 'PICKLE MASTER', universe: 'EARTH-BRINE',
+    look: {
+      face: makeFace({ lens: 'dark', hood: '#5f8f2c' }), hairStyle: null, hair: null, headColor: '#5f8f2c', hat: 'nub',
+      torso: pickleSkin, torsoSize: [64, 64], belly: pickleSkin, traps: '#5f8f2c',
+      sleeve: { mat: pickleSkin, size: [32, 32], long: true }, gloves: '#4a7a22',
+      trunks: pickleSkin, belt: '#5f8f2c', legs: pickleSkin, legsSize: [32, 32], pants: true, legsWide: 1.12,
+      boots: '#2f4f16', shoe: true,
     },
   }),
 ];

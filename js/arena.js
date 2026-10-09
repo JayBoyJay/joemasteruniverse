@@ -1,51 +1,180 @@
-// The arena: ring, ropes that wobble, turnbuckles, crowd, titantron and lighting rig.
+// The venue: a map-driven set. THE ARENA has the ring, ropes that wobble, crowd, titantron and lighting rig;
+// the other maps (see maps.js) are built from the same toolkit of props.
 import * as THREE from 'three';
 import { RING_H, ROPE, APRON, canvasTex, noise, mulberry } from './tex.js';
+import { MAPS, MAP_BY_ID } from './maps.js';
+export { MAPS };
 
 const POST = ROPE + 0.12;
 const ROPE_HEIGHTS = [0.42, 0.82, 1.22];
-const ROPE_COLORS = [0x8a3cf0, 0xf2f2f2, 0x8a3cf0];   // JOE MASTER purple
+const DEFAULT_RING = {
+  ropes: [0x8a3cf0, 0xf2f2f2, 0x8a3cf0],          // JOE MASTER purple
+  pads: [0x141418, 0x7a34d8, 0x141418, 0x7a34d8],
+  post: 0x9aa0aa, steps: true,
+  mat: null, skirt: null,                          // painter overrides (c, w, h, arena)
+};
 const UP = new THREE.Vector3(0, 1, 0);
 
 function lambert(color, extra = {}) { return new THREE.MeshLambertMaterial({ color, ...extra }); }
 
 export class Arena {
-  constructor(scene, title = 'TURNBUCKLE') {
+  constructor(scene, title = 'JOE MASTER UNIVERSE', mapId = 'arena') {
     this.scene = scene;
     this.title = title;
+    this.map = MAP_BY_ID[mapId] || MAPS[0];
+    this.id = this.map.id;
     this.t = 0;
     this.excite = 0.3;
     this.group = new THREE.Group();
     scene.add(this.group);
-    scene.background = new THREE.Color(0x05050b);
-    scene.fog = new THREE.Fog(0x05050b, 16, 52);
-    this._lights();
-    this._floor();
-    this._ring();
-    this._ropes();
-    this._crowd();
-    this._titantron();
-    this._truss();
-    // JOE MASTER's icon goes on the mat, apron, barricades, billboards and titantron
+    this.sides = []; this.crowdMeshes = []; this.flashes = null; this.stageBars = []; this.anims = []; this.iconHooks = [];
+    this.hasRing = false;
+    this.outY = 0;                 // floor height eliminated wrestlers end up on
+    this.outDist = APRON + 0.75;   // how far out they roll
+    // JOE MASTER's icon goes on posters, mats, billboards and screens
     this.icon = null;
     const img = new Image();
     img.onload = () => { this.icon = img; this._applyIcon(); };
     img.src = 'img/icon.jpg';
+    if (this.id === 'arena') this._buildArena();
+    else this.map.build(this, THREE);
+  }
+
+  _buildArena() {
+    this.scene.background = new THREE.Color(0x05050b);
+    this.scene.fog = new THREE.Fog(0x05050b, 16, 52);
+    this._lights();
+    this._floor();
+    this.ring();
+    this._crowd();
+    this._titantron();
+    this._truss();
+    this.iconHooks.push(() => this._arenaBillboards());
+  }
+
+  // remove everything this venue added to the scene
+  dispose() {
+    this.scene.remove(this.group);
+    const seen = new Set();
+    this.group.traverse(o => {
+      if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+      const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of ms) { if (seen.has(m)) continue; seen.add(m); if (m.map) m.map.dispose(); m.dispose(); }
+    });
+  }
+
+  // ---------------- toolkit used by every map ----------------
+  mat(c, extra = {}) {
+    if (c && c.isMaterial) return c;
+    if (typeof c === 'function') return new THREE.MeshLambertMaterial({ map: canvasTex(extra.w || 64, extra.h || 64, c, extra.texOpts || {}), ...(extra.mat || {}) });
+    return new THREE.MeshLambertMaterial({ color: c, ...(extra.mat || {}) });
+  }
+  add(mesh, x = 0, y = 0, z = 0, ry = 0) { mesh.position.set(x, y, z); mesh.rotation.y = ry; this.group.add(mesh); return mesh; }
+  box(w, h, d, m, x, y, z, ry = 0) { return this.add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), this.mat(m)), x, y, z, ry); }
+  cyl(rt, rb, h, m, x, y, z, seg = 10) { return this.add(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), this.mat(m)), x, y, z); }
+  ball(r, m, x, y, z, sx = 1, sy = 1, sz = 1) { const g = new THREE.SphereGeometry(r, 10, 8); g.scale(sx, sy, sz); return this.add(new THREE.Mesh(g, this.mat(m)), x, y, z); }
+  plane(w, h, m, x, y, z, ry = 0, rx = 0) {
+    const mesh = this.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), this.mat(m)), x, y, z, ry);
+    mesh.rotation.x = rx; return mesh;
+  }
+  glow(w, h, color, x, y, z, ry = 0) { // unlit, always-bright panel (neon, screens, lava)
+    return this.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, fog: false, side: THREE.DoubleSide })), x, y, z, ry);
+  }
+  tex(w, h, painter, opts = {}) { return canvasTex(w, h, painter, opts); }
+  light(type, color, intensity, x, y, z, dist = 0, decay = 2) {
+    const l = type === 'point' ? new THREE.PointLight(color, intensity, dist, decay)
+      : type === 'dir' ? new THREE.DirectionalLight(color, intensity)
+      : type === 'hemi' ? new THREE.HemisphereLight(color, x, intensity)
+      : new THREE.AmbientLight(color, intensity);
+    if (type === 'point' || type === 'dir') l.position.set(x, y, z);
+    this.group.add(l); return l;
+  }
+  // a texture that gets JOE MASTER's icon painted in once it has loaded
+  iconTex(w, h, painter, opts = {}) {
+    const t = canvasTex(w, h, (c, W, H) => painter(c, W, H, this.icon), opts);
+    this.iconHooks.push(() => this._redraw(t, (c, W, H) => painter(c, W, H, this.icon)));
+    return t;
+  }
+  every(fn) { this.anims.push(fn); }
+  // flickering fire sprite (hell, burning barrels)
+  flame(x, y, z, size = 1, hue = 0.07) {
+    if (!Arena.flameTex) {
+      Arena.flameTex = canvasTex(32, 64, (c) => {
+        const g = c.createRadialGradient(16, 46, 2, 16, 40, 30);
+        g.addColorStop(0, 'rgba(255,255,220,1)'); g.addColorStop(0.25, 'rgba(255,200,60,0.95)'); g.addColorStop(0.6, 'rgba(255,80,10,0.6)'); g.addColorStop(1, 'rgba(120,0,0,0)');
+        c.fillStyle = g; c.beginPath(); c.moveTo(16, 0); c.quadraticCurveTo(30, 34, 26, 52); c.quadraticCurveTo(16, 66, 6, 52); c.quadraticCurveTo(2, 34, 16, 0); c.fill();
+      });
+    }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: Arena.flameTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    s.center.set(0.5, 0.1);
+    s.position.set(x, y, z); this.group.add(s);
+    const ph = Math.random() * 10;
+    this.every((dt, t) => {
+      const f = 0.85 + 0.15 * Math.sin(t * 17 + ph) + 0.1 * Math.sin(t * 29 + ph * 2);
+      s.scale.set(size * 0.6 * (2 - f), size * 1.2 * f, 1);
+      s.material.color.setHSL(hue, 1, 0.5 + 0.1 * Math.sin(t * 11 + ph));
+    });
+    return s;
+  }
+  // instanced cardboard people (crowds, onlookers). spots: [{x,y,z,rot}]
+  people(spots, palette = null, tint = 0x9a9aa8, variants = 8) {
+    const texs = [];
+    for (let v = 0; v < variants; v++) {
+      texs.push(canvasTex(16, 32, (c) => {
+        const P = palette ? palette(v) : null;
+        const shirt = P ? P.shirt : ['#c0392b', '#2e86de', '#27ae60', '#f1c40f', '#8e44ad', '#ecf0f1', '#e67e22', '#222'][v];
+        const skin = P ? P.skin : ['#f1c7a5', '#c48a60', '#8d5a3b', '#e0ac85'][v % 4];
+        const hair = P ? P.hair : ['#1a120c', '#3b2414', '#c9a15a', '#111'][(v * 3) % 4];
+        c.clearRect(0, 0, 16, 32);
+        c.fillStyle = shirt; c.fillRect(2, 13, 12, 19); c.fillRect(0, 14, 2, 9); c.fillRect(14, 14, 2, 9);
+        c.fillStyle = skin; c.fillRect(4, 3, 8, 9);
+        c.fillStyle = hair; c.fillRect(4, 2, 8, 3);
+        if (P && P.horns) { c.fillStyle = P.horns; c.fillRect(3, 0, 2, 3); c.fillRect(11, 0, 2, 3); }
+        if (P && P.eyes) { c.fillStyle = P.eyes; c.fillRect(5, 6, 2, 1); c.fillRect(9, 6, 2, 1); }
+        if (!P && v % 3 === 0) { c.fillStyle = '#fff'; c.fillRect(0, 0, 16, 2); }
+      }, { nearest: true }));
+    }
+    const per = Array.from({ length: variants }, () => []);
+    const rnd = mulberry(spots.length + 3);
+    for (const sp of spots) per[Math.floor(rnd() * variants)].push({ phase: rnd() * 6.28, amp: 0.5 + rnd(), ...sp });
+    const geo = new THREE.PlaneGeometry(0.55, 1.1); geo.translate(0, 0.55, 0);
+    per.forEach((list, v) => {
+      if (!list.length) return;
+      const m = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ map: texs[v], alphaTest: 0.5, color: tint, side: THREE.DoubleSide }), list.length);
+      m.userData.list = list; this.group.add(m); this.crowdMeshes.push(m);
+    });
+    this._dummy = this._dummy || new THREE.Object3D();
+    this.allFans = (this.allFans || []).concat(spots);
+    this._updateCrowd(0);
+  }
+  // ring at the usual height, with optional style overrides
+  ring(style = {}) {
+    this.ringStyle = { ...DEFAULT_RING, ...style };
+    this.hasRing = true; this.outY = 0; this.outDist = APRON + 0.75;
+    this._ring();
+    this._ropes();
+  }
+  // walled fighting area (no ring): the floor is raised to ring height so the fight code doesn't change
+  floorArea(floorMat, size = 40) {
+    this.hasRing = false; this.outY = RING_H; this.outDist = ROPE + 0.1;
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(size, size), this.mat(floorMat));
+    f.rotation.x = -Math.PI / 2; f.position.y = RING_H; this.group.add(f);
+    return f;
   }
 
   _lights() {
-    this.scene.add(new THREE.AmbientLight(0x3a3a55, 1.1));
+    this.group.add(new THREE.AmbientLight(0x3a3a55, 1.1));
     const hemi = new THREE.HemisphereLight(0xb8c4ff, 0x201810, 0.75);
-    this.scene.add(hemi);
+    this.group.add(hemi);
     const key = new THREE.DirectionalLight(0xfff2dd, 1.35);
     key.position.set(3, 12, 6);
-    this.scene.add(key);
+    this.group.add(key);
     const rim = new THREE.DirectionalLight(0x6f8cff, 0.6);
     rim.position.set(-6, 6, -8);
-    this.scene.add(rim);
+    this.group.add(rim);
     this.ringSpot = new THREE.PointLight(0xffffff, 26, 14, 1.6);
     this.ringSpot.position.set(0, RING_H + 6, 0);
-    this.scene.add(this.ringSpot);
+    this.group.add(this.ringSpot);
   }
 
   _floor() {
@@ -84,7 +213,8 @@ export class Arena {
   _ring() {
     const logo = this.title;
     // mat: off-white canvas with the logo in the middle
-    this.drawMat = (c, w, h) => {
+    const RS = this.ringStyle;
+    this.drawMat = RS.mat ? (c, w, h) => RS.mat(c, w, h, this) : (c, w, h) => {
       c.fillStyle = '#d9d6cf'; c.fillRect(0, 0, w, h); noise(c, w, h, 14);
       c.strokeStyle = '#b9b5ad'; c.lineWidth = 6; c.strokeRect(20, 20, w - 40, h - 40);
       c.save(); c.translate(w / 2, h / 2);
@@ -111,7 +241,7 @@ export class Arena {
     mat.rotation.x = -Math.PI / 2; mat.position.y = RING_H + 0.002;
     this.group.add(mat);
     // skirt
-    this.drawSkirt = (c, w, h) => {
+    this.drawSkirt = RS.skirt ? (c, w, h) => RS.skirt(c, w, h, this) : (c, w, h) => {
       c.fillStyle = '#0d0d16'; c.fillRect(0, 0, w, h);
       c.fillStyle = '#9b4dff'; c.fillRect(0, 0, w, 6);
       c.font = `italic 900 ${h * 0.5}px Impact, Arial Black, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -126,8 +256,8 @@ export class Arena {
     plat.position.y = RING_H / 2;
     this.group.add(plat);
     // posts + turnbuckle pads
-    const postMat = lambert(0x9aa0aa);
-    const padCols = [0x141418, 0x7a34d8, 0x141418, 0x7a34d8];
+    const postMat = lambert(RS.post);
+    const padCols = RS.pads;
     this.corners = [];
     [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sz], i) => {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.5, 6), postMat);
@@ -143,7 +273,7 @@ export class Arena {
     });
     // ring steps in two corners
     const stepMat = lambert(0x50555e);
-    for (const [sx, sz] of [[1, 1], [-1, -1]]) {
+    for (const [sx, sz] of RS.steps ? [[1, 1], [-1, -1]] : []) {
       for (let k = 0; k < 3; k++) {
         const s = new THREE.Mesh(new THREE.BoxGeometry(0.9, (k + 1) * RING_H / 3, 0.5), stepMat);
         const d = APRON + 0.55 + (2 - k) * 0.5;
@@ -167,7 +297,7 @@ export class Arena {
       ROPE_HEIGHTS.forEach((y, k) => {
         const A = new THREE.Vector3(a[0] * POST, RING_H + y, a[1] * POST);
         const B = new THREE.Vector3(b[0] * POST, RING_H + y, b[1] * POST);
-        const mat = lambert(ROPE_COLORS[k]);
+        const mat = lambert(this.ringStyle.ropes[k]);
         const geo = new THREE.CylinderGeometry(0.035, 0.035, 1, 5);
         const m1 = new THREE.Mesh(geo, mat), m2 = new THREE.Mesh(geo, mat);
         this.group.add(m1, m2);
@@ -181,11 +311,12 @@ export class Arena {
   // A wrestler hit the ropes: side index and position along the rope (-1..1)
   ropeHit(side, along = 0, strength = 1) {
     const s = this.sides[side];
+    if (!s) { if (this.onWallHit) this.onWallHit(side, along, strength); return; }
     s.vel += 2.6 * strength;
     s.along = along;
   }
   // Pressing against the ropes (e.g. being shoved): side, amount 0..1
-  ropePress(side, amt) { this.sides[side].push = Math.max(this.sides[side].push, amt); }
+  ropePress(side, amt) { if (this.sides[side]) this.sides[side].push = Math.max(this.sides[side].push, amt); }
 
   _updateRopes(dt) {
     const tmp = new THREE.Vector3(), mid = new THREE.Vector3();
@@ -206,31 +337,14 @@ export class Arena {
     // Seat tiers around the ring, then instanced billboard fans that bob with crowd excitement.
     const tierMat = lambert(0x16161f);
     const rnd = mulberry(11);
-    this.fans = [];
-    const variants = 8;
-    const texs = [];
-    for (let v = 0; v < variants; v++) {
-      texs.push(canvasTex(16, 32, (c) => {
-        const shirt = ['#c0392b', '#2e86de', '#27ae60', '#f1c40f', '#8e44ad', '#ecf0f1', '#e67e22', '#222'][v];
-        const skin = ['#f1c7a5', '#c48a60', '#8d5a3b', '#e0ac85'][v % 4];
-        c.clearRect(0, 0, 16, 32);
-        c.fillStyle = shirt; c.fillRect(2, 13, 12, 19);
-        c.fillRect(0, 14, 2, 9); c.fillRect(14, 14, 2, 9);
-        c.fillStyle = skin; c.fillRect(4, 3, 8, 9);
-        c.fillStyle = ['#1a120c', '#3b2414', '#c9a15a', '#111'][(v * 3) % 4]; c.fillRect(4, 2, 8, 3);
-        if (v % 3 === 0) { c.fillStyle = '#fff'; c.fillRect(0, 0, 16, 2); } // sign above head
-      }, { nearest: true }));
-    }
-    const per = Array.from({ length: variants }, () => []);
+    const spots = [];
     for (let side = 0; side < 4; side++) {
       for (let row = 0; row < 9; row++) {
         const dist = 9.2 + row * 1.15, h = row * 0.62;
-        // tier step
         const len = dist * 2 + 1.2;
         const tier = new THREE.Mesh(new THREE.BoxGeometry(len, 0.62, 1.15), tierMat);
         const a = side * Math.PI / 2;
-        tier.position.set(Math.sin(a) * dist, h + 0.31 - 0.62 + 0.62, Math.cos(a) * dist);
-        tier.position.y = h - 0.31 + 0.62 / 2 + 0.31;
+        tier.position.set(Math.sin(a) * dist, h + 0.31, Math.cos(a) * dist);
         tier.rotation.y = a;
         this.group.add(tier);
         for (let x = -dist + 0.4; x < dist - 0.4; x += 0.62 + rnd() * 0.15) {
@@ -238,21 +352,14 @@ export class Arena {
           if (rnd() < 0.08) continue;
           const lx = x, lz = dist - 0.1;
           const px = Math.cos(a) * lx + Math.sin(a) * lz, pz = -Math.sin(a) * lx + Math.cos(a) * lz;
-          per[Math.floor(rnd() * variants)].push({ x: px, y: h + 0.62, z: pz, rot: a + Math.PI, phase: rnd() * 6.28, amp: 0.5 + rnd() });
+          spots.push({ x: px, y: h + 0.62, z: pz, rot: a + Math.PI });
         }
       }
     }
-    const geo = new THREE.PlaneGeometry(0.55, 1.1);
-    geo.translate(0, 0.55, 0);
-    this.crowdMeshes = per.map((list, v) => {
-      const m = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ map: texs[v], alphaTest: 0.5, color: 0x9a9aa8, side: THREE.DoubleSide }), list.length);
-      m.userData.list = list;
-      this.group.add(m);
-      return m;
-    });
-    this._dummy = new THREE.Object3D();
-    this._updateCrowd(0);
-    // camera flashes
+    this.people(spots);
+    this.cameraFlashes();
+  }
+  cameraFlashes() {
     const flashTex = canvasTex(32, 32, (c) => {
       const g = c.createRadialGradient(16, 16, 0, 16, 16, 16);
       g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, 'rgba(255,255,240,0.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
@@ -264,8 +371,6 @@ export class Arena {
       s.scale.setScalar(0.9); s.visible = false;
       this.group.add(s); this.flashes.push({ s, life: 0 });
     }
-    const allFans = per.flat();
-    this._randomFan = () => allFans[Math.floor(Math.random() * allFans.length)];
   }
 
   _updateCrowd(dt) {
@@ -286,7 +391,7 @@ export class Arena {
     if (!this.flashes) return;
     if (Math.random() < dt * (3 + ex * 18)) {
       const f = this.flashes.find(x => x.life <= 0);
-      const fan = this._randomFan && this._randomFan();
+      const fan = this.allFans && this.allFans[Math.floor(Math.random() * this.allFans.length)];
       if (f && fan) { f.life = 0.09; f.s.position.set(fan.x, fan.y + 0.8, fan.z); f.s.visible = true; }
     }
     for (const f of this.flashes) { if (f.life > 0) { f.life -= dt; if (f.life <= 0) f.s.visible = false; } }
@@ -382,6 +487,7 @@ export class Arena {
   }
   setTron(big, small = '', img) {
     this.lastTron = [big, small, img];
+    if (!this.tronTex) return;
     if (img === undefined) img = this.icon;
     const c = this.tronTex.image.getContext('2d');
     this._drawTron(c, this.tronTex.image.width, this.tronTex.image.height, big, small, img);
@@ -424,10 +530,13 @@ export class Arena {
     tex.needsUpdate = true;
   }
   _applyIcon() {
-    this._redraw(this.matTex, this.drawMat);
-    this._redraw(this.skirtTex, this.drawSkirt);
-    this._redraw(this.barTex, this.drawBar);
+    if (this.matTex) this._redraw(this.matTex, this.drawMat);
+    if (this.skirtTex) this._redraw(this.skirtTex, this.drawSkirt);
+    if (this.barTex) this._redraw(this.barTex, this.drawBar);
     if (this.lastTron) this.setTron(...this.lastTron);
+    for (const h of this.iconHooks) h();
+  }
+  _arenaBillboards() {
     // billboards: big hanging banners over the crowd, flanking the titantron, and above the ring
     const tex = canvasTex(256, 384, (c, w, h) => {
       const g = c.createLinearGradient(0, 0, 0, h);
@@ -462,6 +571,7 @@ export class Arena {
     this.t += dt;
     this._updateRopes(dt);
     this._updateCrowd(dt);
+    for (const f of this.anims) f(dt, this.t, this);
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 3);
     this.stageBars.forEach(b => b.material.color.setHSL(0.75, 0.9, 0.35 + 0.25 * pulse * Math.min(1, this.excite)));
     this.excite += (0.3 - this.excite) * Math.min(1, dt * 0.35);

@@ -1,7 +1,7 @@
 // The game screen: networking, lobby, match flow, camera, HUD and the main loop.
 import * as THREE from 'three';
 import { RetroRenderer } from './ps2.js';
-import { Arena } from './arena.js';
+import { Arena, MAPS } from './arena.js';
 import { Rig } from './rig.js';
 import { Match, Wrestler, BTN } from './game.js';
 import { CpuBrain } from './ai.js';
@@ -41,7 +41,17 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 120);
 retro.onResize = aspect => { camera.aspect = aspect; camera.updateProjectionMatrix(); };
 retro.resize();
-const arena = new Arena(scene, TITLE);
+let mapIndex = 0;
+try { const saved = localStorage.getItem('jmu_map'); const k = MAPS.findIndex(m => m.id === saved); if (k >= 0) mapIndex = k; } catch { /* ignore */ }
+let arena = new Arena(scene, TITLE, MAPS[mapIndex].id);
+
+// ---------- the UI stage: a 1920x1080 layout scaled to whatever screen this is (laptop, 1080p or 4K TV) ----------
+function fitUi() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  document.documentElement.style.setProperty('--s', s.toFixed(4));
+}
+addEventListener('resize', fitUi);
+fitUi();
 const fx = new Fx(scene);
 const sound = new Sound();
 const music = new Music();
@@ -66,6 +76,29 @@ function newPlayer(slot, kind, profile = {}) {
   if (profile.face) loadFace(p, profile.face);
   players[slot] = p;
   return p;
+}
+
+// ---------- maps ----------
+function setMap(index) {
+  if (phase === 'match' || phase === 'intro') return;
+  mapIndex = (index + MAPS.length) % MAPS.length;
+  const id = MAPS[mapIndex].id;
+  try { localStorage.setItem('jmu_map', id); } catch { /* ignore */ }
+  if (arena.id !== id) {
+    const lastTron = arena.lastTron;
+    arena.dispose();
+    arena = new Arena(scene, TITLE, id);
+    if (lastTron) arena.setTron(...lastTron);
+    // the results screen keeps the finished match: just move it to the new venue next time
+  }
+  updateMapUi();
+  broadcastPhase();
+}
+function updateMapUi() {
+  const m = MAPS[mapIndex];
+  $('mapName').textContent = m.name;
+  $('mapBlurb').textContent = m.blurb || '';
+  $('mapDots').innerHTML = MAPS.map((x, i) => `<i class="${i === mapIndex ? 'on' : ''}"></i>`).join('');
 }
 
 // ---------- the roster: JOE MASTER and his multiverse ----------
@@ -200,6 +233,7 @@ function onPad(id, ev, data) {
   if (ev === 'i') p.input.set(data.x, data.y, data.b | 0);
   else if (ev === 'profile') applyProfile(p, data.profile);
   else if (ev === 'start') requestStart();
+  else if (ev === 'map') { if (phase === 'lobby') setMap(mapIndex + (data.dir < 0 ? -1 : 1)); }
   else if (ev === 'bye') {
     p.connected = false; p.input.clear();
     if (phase === 'lobby' || phase === 'results') { players[p.slot] = null; clearLobbyRig(p.slot); refreshLobby(); }
@@ -215,7 +249,7 @@ function phaseMsg(p) {
 }
 function sendPhase(p) {
   if (!p || p.kind !== 'pad') return;
-  sendTo(p.padId, { t: 'phase', phase, canStart: (phase === 'lobby' || phase === 'results') && canStart(), msg: phaseMsg(p) });
+  sendTo(p.padId, { t: 'phase', phase, canStart: (phase === 'lobby' || phase === 'results') && canStart(), msg: phaseMsg(p), map: MAPS[mapIndex].name, canMap: phase === 'lobby' });
 }
 function broadcastPhase() { players.forEach(p => p && sendPhase(p)); }
 
@@ -455,12 +489,17 @@ function buildHud(roster) {
     d.innerHTML = `<img alt=""><div class="info"><div class="nm"><span>P${p.slot + 1}</span> <b></b></div><div class="hp"><i></i></div><div class="sp"><i></i></div></div>`;
     d.querySelector('img').src = faceThumb(p);
     d.querySelector('b').textContent = p.name;
+    d.querySelector('.nm').style.fontSize = Math.min(30, Math.floor(30 * 16 / (p.name.length + 3))) + 'px'; // long names shrink instead of cutting off
     hud.appendChild(d);
     return { d, p, hp: d.querySelector('.hp i'), sp: d.querySelector('.sp i'), spBar: d.querySelector('.sp'), last: '' };
   });
 }
 function updateHud() {
   for (const h of hudEls) {
+    if (!h.fit && h.d.clientWidth) { // shrink long names until they fit the card
+      h.fit = true; const nm = h.d.querySelector('.nm');
+      for (let fs = parseFloat(nm.style.fontSize) || 30; fs > 16 && nm.scrollWidth > nm.clientWidth; fs -= 1) nm.style.fontSize = fs - 1 + 'px';
+    }
     const w = h.p.wrestler; if (!w) continue;
     const key = `${w.hp | 0},${w.sp | 0},${w.eliminated},${h.p.connected}`;
     if (key === h.last) continue;
@@ -545,7 +584,10 @@ function handleEvents() {
         break;
       case 'block': sound.block(); fx.spark(e.at, 0.3, 0x88ccff); vibe(e.w, 15); break;
       case 'whoosh': sound.whoosh(); break;
-      case 'rope': sound.rope(); arena.ropeHit(e.side, ropeAlong(e.side, e.x, e.z), e.power); break;
+      case 'rope':
+        if (arena.hasRing) sound.rope(); else { sound.hit(0.5 * e.power); shake = Math.max(shake, 0.04 * e.power); }
+        arena.ropeHit(e.side, ropeAlong(e.side, e.x, e.z), e.power);
+        break;
       case 'grab': sound.block(); vibe(e.v, 60); break;
       case 'lift': arena.pop(0.2); break;
       case 'slam':
@@ -643,6 +685,9 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN') { const on = music.toggle(); updateMusicUi(on); banner(on ? 'MUSIC ON' : 'MUSIC OFF', 900); }
   if (e.code === 'Escape' && phase !== 'lobby') backToLobby();
   if (e.code === 'KeyC' && phase === 'lobby') addCpu();
+  if (e.code === 'ArrowLeft' && phase === 'lobby') setMap(mapIndex - 1);
+  if (e.code === 'ArrowRight' && phase === 'lobby') setMap(mapIndex + 1);
+  if (e.code === 'KeyF') toggleFullscreen();
   if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'ShiftLeft', 'ShiftRight'].includes(e.code)) kbUpdate();
 });
 addEventListener('keyup', e => { kb.keys.delete(e.code); kbUpdate(); });
@@ -655,6 +700,12 @@ function addCpu() {
   refreshLobby();
 }
 $('addCpu').onclick = addCpu;
+$('mapPrev').onclick = () => setMap(mapIndex - 1);
+$('mapNext').onclick = () => setMap(mapIndex + 1);
+function toggleFullscreen() {
+  try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch { /* not allowed */ }
+}
+$('fsBtn').onclick = toggleFullscreen;
 $('addJoe').onclick = () => { joeCpuWanted = true; addJoeCpu(); refreshLobby(); };
 $('musicBtn').onclick = () => { music.start(); const on = music.toggle(); updateMusicUi(on); };
 $('addKb').onclick = () => { const s = freeSlot(); if (s >= 0 && !players.some(p => p && p.kind === 'kb')) { newPlayer(s, 'kb'); refreshLobby(); } };
@@ -754,9 +805,9 @@ function frame(now) {
     updateHud();
     if (match.over && phase === 'match') { resultsT += dt; if (resultsT > 0) endToResults(); }
     // crowd noise follows excitement
-    sound.crowd(Math.min(1, arena.excite));
+    sound.crowd(Math.min(1, arena.excite) * (arena.map.crowd ?? 1));
   } else {
-    sound.crowd(0.25);
+    sound.crowd(0.25 * (arena.map.crowd ?? 1));
   }
   pushPadState(dt);
   fx.update(simDt);
@@ -783,6 +834,7 @@ arena.setTron(TITLE, 'SCAN THE QR TO JOIN');
 music.refresh().then(() => updateMusicUi(music.on));
 buildTicker();
 showOverlay('lobby');
+updateMapUi();
 addJoeCpu();
 refreshLobby();
 net.start();
@@ -790,4 +842,4 @@ requestAnimationFrame(frame);
 
 // debug/test hook
 window.__music = music;
-window.__tb = { net, arena, scene, camera, players, get match() { return match; }, get phase() { return phase; }, addCpu, startMatch, retro, newPlayer, refreshLobby };
+window.__tb = { net, get arena() { return arena; }, setMap, scene, camera, players, get match() { return match; }, get phase() { return phase; }, addCpu, startMatch, retro, newPlayer, refreshLobby };
