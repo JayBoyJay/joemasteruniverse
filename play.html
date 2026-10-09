@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0b14">
+<title>JOE MASTER UNIVERSE</title>
+<link rel="icon" href="img/icon.jpg">
+<style>
+  :root {
+    --bg: #0b0b14; --panel: #161626; --line: #2c2c46; --text: #f1f1f7; --dim: #9a9ab8;
+    --me: #e63946;
+    --tri: #2fd07a; --sq: #ff5fb0; --ci: #ff4040; --x: #4a8dff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; touch-action: none; overscroll-behavior: none; }
+  .screen { position: fixed; inset: 0; display: none; }
+  .screen.on { display: block; }
+  h1 { font: italic 900 30px/1 Impact, "Arial Black", sans-serif; letter-spacing: 1px; margin: 0;
+    background: linear-gradient(#fff 0%, #ffd34d 55%, #ff7a1a 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 1px #000; transform: skewX(-8deg); }
+
+  /* ---------- setup ---------- */
+  #setup { overflow-y: auto; touch-action: pan-y; padding: max(16px, env(safe-area-inset-top)) 16px 24px; }
+  #setup .wrap { max-width: 460px; margin: 0 auto; display: grid; gap: 16px; }
+  .sub { color: var(--dim); font-size: 13px; margin-top: 4px; letter-spacing: 2px; text-transform: uppercase; }
+  label.l { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); display: block; margin-bottom: 6px; }
+  input[type=text] { width: 100%; font: 700 20px system-ui; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--line);
+    background: var(--panel); color: var(--text); -webkit-user-select: text; user-select: text; text-transform: uppercase; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { flex: 1; min-width: 70px; padding: 12px 8px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel);
+    color: var(--text); font: 700 14px system-ui; text-align: center; }
+  .chip.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--me) inset; }
+  .sw { width: 42px; height: 42px; border-radius: 50%; border: 3px solid transparent; flex: none; }
+  .sw.sel { border-color: #fff; box-shadow: 0 0 0 3px #000 inset; }
+  .chars { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .char { position: relative; display: grid; justify-items: center; gap: 4px; padding: 10px 8px 12px; border-radius: 14px; border: 2px solid var(--line);
+    background: var(--panel); color: var(--text); font: 600 12px system-ui; }
+  .char img, .char .ph { width: 92px; height: 92px; border-radius: 10px; object-fit: cover; background: #23233a; }
+  .char .ph { display: grid; place-items: center; font: 900 40px Impact, sans-serif; color: #555; }
+  .char b { font: italic 900 18px Impact, "Arial Black", sans-serif; letter-spacing: .5px; }
+  .char span { color: var(--dim); }
+  .char.sel { border-color: #fff; box-shadow: 0 0 0 3px var(--me) inset; }
+  .char.joe { background: radial-gradient(circle at 50% 30%, #4a1f8a, #1a0f33 75%); }
+  .char.joe.sel { box-shadow: 0 0 0 3px #b07cff inset, 0 0 24px #9b4dff88; }
+  #custom { display: grid; gap: 16px; }
+  .joeonly #custom { display: none; }
+  #joeNote { display: none; text-align: center; color: #d7b6ff; font: 600 14px system-ui; line-height: 1.5; }
+  .joeonly #joeNote { display: block; }
+  #roomCode { font: italic 900 30px Impact, sans-serif; letter-spacing: 10px; text-align: center; }
+  #roomCode.bad { border-color: #ff4a4a; box-shadow: 0 0 0 3px #ff4a4a55; }
+  .preview { margin-top: 8px; font: italic 900 22px Impact, "Arial Black", sans-serif; color: #d7b6ff; letter-spacing: .5px; }
+  .uni { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; background: radial-gradient(circle at 20% 40%, #3a1a6a, #161626 70%);
+    border: 2px solid var(--line); border-radius: 14px; padding: 10px; }
+  .uni img { width: 110px; height: 150px; object-fit: contain; }
+  .uni b { display: block; font: italic 900 22px Impact, sans-serif; margin: 2px 0; }
+  .uni span { display: block; color: #c9a6ff; font: 700 12px system-ui; letter-spacing: 2px; margin-bottom: 10px; }
+  .char img { object-fit: contain; }
+  details summary { color: var(--dim); font: 600 13px system-ui; padding: 6px 0; cursor: pointer; }
+  details[open] summary { margin-bottom: 10px; }
+  .facebox { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: center; }
+  #crop { width: 150px; height: 150px; border-radius: 12px; background: var(--panel); border: 2px solid var(--line); touch-action: none; }
+  .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; border: none; font: 800 16px system-ui; letter-spacing: 1px;
+    background: #2a2a44; color: #fff; text-transform: uppercase; }
+  .btn.go { background: linear-gradient(#ff5a4f, #c81d25); font-size: 22px; padding: 18px; box-shadow: 0 4px 0 #6d0d12; font-style: italic; }
+  .hint { color: var(--dim); font-size: 12px; line-height: 1.4; }
+  input[type=range] { width: 100%; }
+
+  /* ---------- pad ---------- */
+  #pad { background: radial-gradient(ellipse at 50% 120%, #1c1c33 0%, var(--bg) 70%); }
+  #hud { position: absolute; left: 0; right: 0; top: 0; padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+    display: flex; align-items: center; gap: 10px; background: linear-gradient(#000a, #0000); }
+  #tag { font: italic 900 22px Impact, "Arial Black", sans-serif; padding: 2px 10px; border-radius: 6px; background: var(--me); color: #fff;
+    -webkit-text-stroke: .5px #000; transform: skewX(-8deg); }
+  #nm { font: 800 15px system-ui; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
+  .bars { flex: 1; display: grid; gap: 4px; min-width: 80px; }
+  .bar { height: 10px; background: #000; border: 1px solid #444; border-radius: 3px; overflow: hidden; transform: skewX(-15deg); }
+  .bar i { display: block; height: 100%; width: 100%; transition: width .2s; }
+  #hp i { background: linear-gradient(#7dff7a, #20b13a); }
+  #sp i { background: linear-gradient(#ffe97a, #f0a300); width: 0; }
+  #sp.full i { background: linear-gradient(#fff, #ff3cf0); animation: glow .4s infinite alternate; }
+  @keyframes glow { to { filter: brightness(1.6); } }
+  #gear { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: #0006; color: #fff; font-size: 18px; flex: none; }
+  #status { position: absolute; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 52px); transform: translateX(-50%);
+    font: italic 900 18px Impact, sans-serif; letter-spacing: 1px; color: #ffd34d; text-shadow: 0 2px 0 #000; text-align: center; white-space: nowrap; pointer-events: none; }
+  #stick { position: absolute; left: 0; bottom: 0; width: 50%; top: 90px; touch-action: none; }
+  #stick .base { position: absolute; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%;
+    border: 3px solid #ffffff22; background: radial-gradient(#ffffff10, #ffffff05); display: none; }
+  #stick .knob { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #777, #222 70%); border: 2px solid #000; box-shadow: 0 4px 10px #000a; display: none; }
+  #stick .ghost { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); color: #ffffff30; font: 700 13px system-ui;
+    letter-spacing: 2px; text-align: center; pointer-events: none; }
+  #btns { position: absolute; right: 0; bottom: 0; width: 50%; top: 90px; }
+  .dia { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom));
+    width: calc(var(--b) * 3); height: calc(var(--b) * 3); --b: min(16vmax, 25vmin, 120px); }
+  .pb { position: absolute; width: var(--b); height: var(--b); border-radius: 50%; border: 3px solid #000;
+    background: radial-gradient(circle at 40% 30%, #3a3a4a, #15151d 70%); box-shadow: 0 5px 0 #000, inset 0 2px 0 #ffffff22;
+    display: grid; place-items: center; color: var(--c); touch-action: none; }
+  .pb svg { width: 42%; height: 42%; }
+  .pb span { position: absolute; bottom: 9%; font: 800 calc(var(--b) * .12) system-ui; letter-spacing: 1px; color: #fff9; }
+  .pb.dn { transform: translateY(4px); box-shadow: 0 1px 0 #000, inset 0 2px 0 #ffffff22; background: radial-gradient(circle at 40% 30%, #555570, #23233a 70%); }
+  #bT { left: var(--b); top: 0; --c: var(--tri); }
+  #bS { left: 0; top: var(--b); --c: var(--sq); }
+  #bC { left: calc(var(--b) * 2); top: var(--b); --c: var(--ci); }
+  #bX { left: var(--b); top: calc(var(--b) * 2); --c: var(--x); }
+  .pill { position: absolute; padding: 10px 18px; border-radius: 30px; border: 2px solid #000; background: #2a2a3c; color: #fff;
+    font: 800 13px system-ui; letter-spacing: 2px; box-shadow: 0 3px 0 #000; touch-action: none; }
+  .pill.dn { transform: translateY(2px); box-shadow: 0 1px 0 #000; background: #44445c; }
+  #taunt { right: max(18px, env(safe-area-inset-right)); top: 96px; }
+  #start { left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: linear-gradient(#ff5a4f, #c81d25); display: none; }
+  #start.dn { transform: translate(-50%, 2px); }
+  #flash { position: absolute; inset: 0; background: #ff0000; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  #msg { position: fixed; inset: 0; display: none; place-items: center; background: #000c; z-index: 9; text-align: center; padding: 30px; }
+  #msg.on { display: grid; }
+  #msg b { font: italic 900 28px Impact, sans-serif; color: #ffd34d; display: block; margin-bottom: 8px; }
+  @media (orientation: portrait) {
+    .dia { --b: min(19vw, 92px); }
+    #stick, #btns { top: 40%; }
+    #taunt { top: calc(40% - 50px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ======== SETUP ======== -->
+<section id="setup" class="screen on">
+  <div class="wrap">
+    <div>
+      <h1>JOE MASTER</h1>
+      <div class="sub">UNIVERSE · every wrestler is a Joe Master</div>
+    </div>
+    <div id="roomRow" style="display:none">
+      <label class="l" for="roomCode">Room code (on the game screen)</label>
+      <input id="roomCode" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters" inputmode="text">
+    </div>
+    <div class="chars">
+      <button class="char joe" data-c="joe"><img src="img/costumes/original.png" alt=""><b>THE ORIGINAL</b><span>Joe Master himself</span></button>
+      <button class="char" data-c=""><img id="myCostumeCard" src="img/costumes/podfather.png" alt=""><b>BECOME A MASTER</b><span>From your own universe</span></button>
+    </div>
+    <div id="joeNote">You are <b>THE ORIGINAL JOE MASTER</b>. TAUNT for the signature pose; a full meter + GRAB is the <b>SMALL PACKAGE</b>. The ref counts your pins… totally clean, with no help at all.<br><br>If someone already has him, you'll become a Master from another universe instead.</div>
+    <div id="custom">
+      <div>
+        <label class="l" for="name">Your name</label>
+        <input id="name" type="text" maxlength="12" placeholder="JAYDEN" autocomplete="off">
+        <div class="preview" id="namePreview"></div>
+      </div>
+      <div class="uni">
+        <img id="costumeImg" alt="">
+        <div>
+          <div class="l">Your universe</div>
+          <b id="costumeTitle"></b>
+          <span id="costumeUni"></span>
+          <button class="btn" id="reroll">🎲 Different universe</button>
+        </div>
+      </div>
+      <details id="faceOpt">
+        <summary>Use my own face instead of Joe's (optional)</summary>
+        <div class="facebox">
+          <canvas id="crop" width="300" height="300"></canvas>
+          <div style="display:grid;gap:8px">
+            <button class="btn" id="snap">📸 Take selfie</button>
+            <button class="btn" id="pick">🖼 Choose photo</button>
+            <input id="zoom" type="range" min="1" max="3" step="0.01" value="1.4" aria-label="Zoom">
+            <button class="btn" id="clearFace">Use Joe's face</button>
+          </div>
+        </div>
+        <div class="hint">Drag to line your face up inside the oval. Use the slider to zoom.</div>
+        <input id="fileCam" type="file" accept="image/*" capture="user" hidden>
+        <input id="fileLib" type="file" accept="image/*" hidden>
+      </details>
+    </div>
+    <button class="btn go" id="join">ENTER THE RING</button>
+    <div class="hint">Best played with your phone sideways.</div>
+  </div>
+</section>
+
+<!-- ======== PAD ======== -->
+<section id="pad" class="screen">
+  <div id="hud">
+    <div id="tag">P?</div>
+    <div id="nm"></div>
+    <div class="bars"><div class="bar" id="hp"><i></i></div><div class="bar" id="sp"><i></i></div></div>
+    <button id="gear" aria-label="Edit wrestler">⚙</button>
+  </div>
+  <div id="status">CONNECTING…</div>
+  <div id="stick"><div class="ghost">MOVE<br>touch anywhere</div><div class="base"></div><div class="knob"></div></div>
+  <div id="btns">
+    <div class="dia">
+      <div class="pb" id="bT" data-b="8"><svg viewBox="0 0 10 10"><path d="M5 1L9.3 8.7H.7z" fill="none" stroke="currentColor" stroke-width="1.2"/></svg><span>BLOCK</span></div>
+      <div class="pb" id="bS" data-b="1"><svg viewBox="0 0 10 10"><rect x="1.3" y="1.3" width="7.4" height="7.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg><span>STRIKE</span></div>
+      <div class="pb" id="bC" data-b="2"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="3.9" fill="none" stroke="currentColor" stroke-width="1.2"/></svg><span>GRAB</span></div>
+      <div class="pb" id="bX" data-b="4"><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.3"/></svg><span>RUN</span></div>
+    </div>
+  </div>
+  <div class="pill" id="taunt" data-b="16">TAUNT</div>
+  <div class="pill" id="start">START MATCH</div>
+  <div id="flash"></div>
+</section>
+
+<div id="msg"><div><b id="msgT"></b><div id="msgB"></div></div></div>
+
+<script>
+(() => {
+  // keep in sync with public/js/characters.js
+  const COSTUMES = [
+    ['podfather', 'THE PODFATHER', 'EARTH-POD'], ['sparkle', 'SPARKLE MOTION', 'EARTH-1984'], ['sombrero', 'EL MAESTRO', 'EARTH-52'],
+    ['disco', 'DISCO INFERNO', 'EARTH-1977'], ['school', 'SCHOOL DAYS', 'EARTH-831'], ['samurai', 'THE LAST SAMURAI', 'EARTH-1600'],
+    ['luchador', 'LUCHA LIBRE', 'EARTH-619'], ['suit', 'CEO OF PODCASTING', 'EARTH-$$$'], ['eggplant', 'THE AUBERGINE', 'EARTH-69'],
+    ['astronaut', 'ONE GIANT SLAM', 'EARTH-2001'], ['pirate', 'CAPTAIN PODBEARD', 'EARTH-7-SEAS'],
+  ];
+  const randomCostume = (not) => { const l = COSTUMES.filter(c => c[0] !== not); return l[Math.floor(Math.random() * l.length)][0]; };
+  const masterName = raw => { let n = String(raw || '').toUpperCase().replace(/[^A-Z0-9 .'\-!?]/g, '').replace(/\s+/g, ' ').trim().replace(/\s*MASTER$/, '').trim(); return (n || 'ROOKIE').slice(0, 12) + ' MASTER'; };
+  const $ = id => document.getElementById(id);
+
+  // ---------- identity & profile ----------
+  let id = localStorage.getItem('tb_id');
+  if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('tb_id', id); }
+  let profile = { name: '', face: '', char: '', costume: '' };
+  try { const p = JSON.parse(localStorage.getItem('jmu_profile') || '{}'); profile.name = p.name || ''; profile.char = p.char || ''; profile.costume = p.costume || ''; profile.face = p.face || ''; } catch {}
+  if (!COSTUMES.some(c => c[0] === profile.costume)) profile.costume = randomCostume();
+  const saveProfile = () => { try { localStorage.setItem('jmu_profile', JSON.stringify(profile)); } catch {} };
+
+  // ---------- setup UI ----------
+  $('name').value = profile.name;
+  function showCostume(id, title, uni) {
+    const c = COSTUMES.find(x => x[0] === id) || COSTUMES[0];
+    $('costumeImg').src = $('myCostumeCard').src = `img/costumes/${c[0]}.png`;
+    $('costumeTitle').textContent = title || c[1];
+    $('costumeUni').textContent = uni || c[2];
+  }
+  showCostume(profile.costume);
+  const updatePreview = () => { $('namePreview').textContent = '→ ' + masterName($('name').value); };
+  $('name').addEventListener('input', updatePreview); updatePreview();
+  $('reroll').onclick = () => {
+    profile.costume = randomCostume(profile.costume); showCostume(profile.costume); saveProfile();
+    if (navigator.vibrate) navigator.vibrate(15);
+    if (joined) send({ t: 'profile', profile });
+  };
+  $('clearFace').onclick = () => {
+    profile.face = ''; img = null; saveProfile(); drawCrop();
+    try { localStorage.removeItem('jmu_src'); } catch {}
+    if (joined) send({ t: 'profile', profile });
+  };
+  if (profile.face) $('faceOpt').open = true;
+  function setMe() { document.documentElement.style.setProperty('--me', '#9b4dff'); }
+  setMe();
+
+  // ---------- character select ----------
+  function setChar(c) {
+    profile.char = c;
+    document.querySelectorAll('.char').forEach(b => b.classList.toggle('sel', b.dataset.c === c));
+    $('setup').classList.toggle('joeonly', c === 'joe');
+    $('join').textContent = c === 'joe' ? 'ENTER AS THE ORIGINAL' : 'ENTER THE MULTIVERSE';
+  }
+  document.querySelectorAll('.char').forEach(b => b.onclick = () => { setChar(b.dataset.c); saveProfile(); if (joined) send({ t: 'profile', profile }); });
+  setChar(profile.char || '');
+
+  // ---------- face cropper ----------
+  const crop = $('crop'), cx = crop.getContext('2d');
+  let img = null, panX = 0, panY = 0;
+  const savedSrc = profile.face ? localStorage.getItem('jmu_src') : null;
+  if (savedSrc) {
+    const i = new Image();
+    i.onload = () => {
+      img = i;
+      try { const c = JSON.parse(localStorage.getItem('jmu_crop') || '{}'); panX = c.x || 0; panY = c.y || 0; $('zoom').value = c.z || 1.4; } catch {}
+      drawCrop();
+    };
+    i.src = savedSrc;
+  }
+  function cropRect() {
+    // square region of the source image shown in the 300px preview
+    const z = parseFloat($('zoom').value);
+    const s = Math.min(img.width, img.height) / z;
+    const x = (img.width - s) / 2 - panX * s / 300, y = (img.height - s) / 2 - panY * s / 300;
+    return { x, y, s };
+  }
+  function drawCrop() {
+    cx.fillStyle = '#161626'; cx.fillRect(0, 0, 300, 300);
+    if (img) { const r = cropRect(); cx.drawImage(img, r.x, r.y, r.s, r.s, 0, 0, 300, 300); }
+    else {
+      cx.fillStyle = '#ecbd94'; cx.beginPath(); cx.ellipse(150, 150, 95, 120, 0, 0, 7); cx.fill();
+      cx.fillStyle = '#fff'; cx.font = '700 22px system-ui'; cx.textAlign = 'center'; cx.fillText('NO PHOTO', 150, 158);
+    }
+    cx.strokeStyle = '#ffd34d'; cx.lineWidth = 3; cx.setLineDash([10, 8]);
+    cx.beginPath(); cx.ellipse(150, 150, 100, 128, 0, 0, 7); cx.stroke(); cx.setLineDash([]);
+  }
+  drawCrop();
+  function loadFile(f) {
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    const i = new Image();
+    i.onload = () => {
+      // downscale huge camera photos first
+      const max = 700, k = Math.min(1, max / Math.max(i.width, i.height));
+      const c = document.createElement('canvas'); c.width = Math.round(i.width * k); c.height = Math.round(i.height * k);
+      c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
+      const src = c.toDataURL('image/jpeg', 0.85);
+      try { localStorage.setItem('jmu_src', src); } catch {}
+      const j = new Image(); j.onload = () => { img = j; panX = panY = 0; $('zoom').value = 1.4; drawCrop(); exportFace(); };
+      j.src = src;
+      URL.revokeObjectURL(url);
+    };
+    i.src = url;
+  }
+  $('snap').onclick = () => $('fileCam').click();
+  $('pick').onclick = () => $('fileLib').click();
+  $('fileCam').onchange = e => loadFile(e.target.files[0]);
+  $('fileLib').onchange = e => loadFile(e.target.files[0]);
+  $('zoom').oninput = () => { drawCrop(); exportFaceSoon(); };
+  let drag = null;
+  crop.addEventListener('pointerdown', e => { if (!img) return; crop.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, px: panX, py: panY }; });
+  crop.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const k = 300 / crop.clientWidth;
+    panX = drag.px + (e.clientX - drag.x) * k; panY = drag.py + (e.clientY - drag.y) * k; drawCrop();
+  });
+  crop.addEventListener('pointerup', () => { drag = null; exportFaceSoon(); });
+  let ft = 0;
+  function exportFaceSoon() { clearTimeout(ft); ft = setTimeout(exportFace, 250); }
+  function exportFace() {
+    if (!img) return;
+    const r = cropRect();
+    // crop to the oval's bounding box so the face fills the wrestler's head
+    const ox = (150 - 100) / 300, oy = (150 - 128) / 300, ow = 200 / 300, oh = 256 / 300;
+    const c = document.createElement('canvas'); c.width = 112; c.height = 128;
+    c.getContext('2d').drawImage(img, r.x + ox * r.s, r.y + oy * r.s, ow * r.s, oh * r.s, 0, 0, 112, 128);
+    profile.face = c.toDataURL('image/jpeg', 0.85);
+    saveProfile();
+    try { localStorage.setItem('jmu_crop', JSON.stringify({ x: panX, y: panY, z: $('zoom').value })); } catch {}
+    if (joined) send({ t: 'profile', profile });
+  }
+
+  // ---------- networking ----------
+  // 'peer': normal hosted mode - connect straight to the game screen over WebRTC using its room code.
+  // 'ws'  : the optional local Node server on your Wi-Fi.
+  const PEER_PREFIX = 'joemasteruniverse-';
+  const PEERJS_URLS = ['https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js', 'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js'];
+  const cleanCode = v => String(v || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+  let room = cleanCode(new URLSearchParams(location.search).get('room'));
+  let mode = null;
+  const modeReady = (async () => {
+    if (room) { mode = 'peer'; try { localStorage.setItem('jmu_last_room', room); } catch {} return; }
+    if (location.protocol !== 'https:') try {
+      const r = await fetch('info', { cache: 'no-store' });
+      const j = await r.json();
+      if (j && j.server === 'joe-master-universe') { mode = 'ws'; return; }
+    } catch {}
+    mode = 'peer';
+    try { room = cleanCode(localStorage.getItem('jmu_last_room')); } catch {}
+    $('roomCode').value = room;
+    $('roomRow').style.display = '';
+  })();
+  function loadScript(src) {
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  }
+  async function loadPeerJS() {
+    const get = () => window.Peer || (window.peerjs && window.peerjs.Peer);
+    if (get()) return get();
+    for (const u of PEERJS_URLS) { try { await loadScript(u); if (get()) return get(); } catch {} }
+    throw new Error('PeerJS unavailable');
+  }
+
+  let ws = null, peer = null, conn = null, connecting = false, retryT = 0;
+  let joined = false, retry = 0, slot = -1, phase = 'lobby';
+  function send(m) {
+    if (mode === 'ws') { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+    else if (conn && conn.open) { try { conn.send(m); } catch {} }
+  }
+  function retryLater(ms) { clearTimeout(retryT); retryT = setTimeout(connect, ms != null ? ms : Math.min(5000, 800 + retry++ * 700)); }
+  async function connect() {
+    await modeReady;
+    if (mode === 'ws') connectWs(); else connectPeer();
+  }
+  function connectWs() {
+    if (ws && ws.readyState <= 1) return;
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
+    ws.onopen = () => { retry = 0; status('JOINING…'); send({ t: 'hello', id, profile }); };
+    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } onMsg(m); };
+    ws.onclose = () => { status('RECONNECTING…'); retryLater(); };
+  }
+  async function connectPeer() {
+    if (connecting || (conn && conn.open)) return;
+    connecting = true;
+    try {
+      const Peer = await loadPeerJS();
+      if (!peer || peer.destroyed) {
+        peer = new Peer({ debug: 0 });
+        peer.on('error', err => {
+          const t = err && err.type;
+          if (t === 'peer-unavailable') status('GAME SCREEN NOT FOUND — CHECK ROOM ' + room);
+          else status('CONNECTION PROBLEM — RETRYING…');
+          if (conn && !conn.open) { try { conn.close(); } catch {} conn = null; }
+          connecting = false; retryLater(2500);
+        });
+        peer.on('disconnected', () => setTimeout(() => { if (peer && !peer.destroyed && peer.disconnected) { try { peer.reconnect(); } catch {} } }, 1000));
+      }
+      if (!peer.open) await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('timeout')), 10000); peer.once('open', () => { clearTimeout(t); res(); }); });
+      status('CONNECTING TO ROOM ' + room + '…');
+      const c = peer.connect(PEER_PREFIX + room, { serialization: 'json', reliable: true });
+      conn = c;
+      const openTimer = setTimeout(() => {
+        if (c.open || conn !== c) return;
+        try { c.close(); } catch {}
+        conn = null; connecting = false;
+        status('GAME SCREEN NOT FOUND — CHECK ROOM ' + room); retryLater(2500);
+      }, 9000);
+      c.on('open', () => { clearTimeout(openTimer); retry = 0; connecting = false; lastRx = Date.now(); status('JOINING…'); c.send({ t: 'hello', id, profile }); });
+      c.on('data', m => { lastRx = Date.now(); if (typeof m === 'string') { try { m = JSON.parse(m); } catch { return; } } onMsg(m); });
+      c.on('close', () => { clearTimeout(openTimer); if (conn === c) { conn = null; connecting = false; status('WAITING FOR GAME SCREEN…'); retryLater(); } });
+    } catch (e) {
+      connecting = false;
+      status(e && /PeerJS/.test(e.message) ? 'NO INTERNET — RETRYING…' : 'CONNECTING…');
+      retryLater(3000);
+    }
+  }
+  // watchdog: the game screen pings every second; if it goes quiet (TV tab closed or refreshed), reconnect
+  let lastRx = 0;
+  setInterval(() => {
+    if (mode !== 'peer' || !joined || !conn || !conn.open) return;
+    if (Date.now() - lastRx > 6000) {
+      const c = conn; conn = null; connecting = false;
+      try { c.close(); } catch {}
+      status('LOST THE GAME SCREEN — RECONNECTING…');
+      retryLater(500);
+    }
+  }, 1000);
+  function switchRoom(code) {
+    room = code;
+    try { localStorage.setItem('jmu_last_room', room); } catch {}
+    if (conn) { const c = conn; conn = null; connecting = false; try { c.close(); } catch {} }
+    connect();
+  }
+  function onMsg(m) {
+    if (m.t === 'nohost') { status('WAITING FOR GAME SCREEN'); }
+    else if (m.t === 'note') { status(m.msg, true); }
+    else if (m.t === 'assign') {
+      slot = m.slot; $('tag').textContent = 'P' + (slot + 1); $('tag').style.background = m.color || '#9b4dff';
+      if (m.costume && m.costume !== 'original' && m.costume !== profile.costume) { profile.costume = m.costume; saveProfile(); }
+      if (m.costume && m.costume !== 'original') showCostume(m.costume, m.costumeTitle, m.universe);
+      if (m.name) $('nm').textContent = m.name;
+      hideMsg(); status('');
+    }
+    else if (m.t === 'full') { showMsg('RING IS FULL', '4 wrestlers max. You\'ll get in when a spot opens.'); }
+    else if (m.t === 'phase') {
+      phase = m.phase;
+      $('start').style.display = m.canStart ? 'block' : 'none';
+      if (m.msg !== undefined) status(m.msg);
+    }
+    else if (m.t === 'st') {
+      $('hp').firstChild.style.width = Math.max(0, m.hp) + '%';
+      $('sp').firstChild.style.width = Math.min(100, m.sp) + '%';
+      $('sp').classList.toggle('full', m.sp >= 100);
+      if (m.msg !== undefined) status(m.msg);
+    }
+    else if (m.t === 'vibe') {
+      if (navigator.vibrate) navigator.vibrate(m.ms || 40);
+      const f = $('flash'); f.style.transition = 'none'; f.style.opacity = Math.min(0.5, (m.ms || 40) / 200);
+      requestAnimationFrame(() => { f.style.transition = 'opacity .3s'; f.style.opacity = 0; });
+    }
+  }
+  let noteUntil = 0;
+  function status(t, note = false) {
+    if (note) noteUntil = performance.now() + 5000;
+    else if (performance.now() < noteUntil) return;
+    $('status').textContent = t;
+  }
+  function showMsg(t, b) { $('msgT').textContent = t; $('msgB').textContent = b; $('msg').classList.add('on'); }
+  function hideMsg() { $('msg').classList.remove('on'); }
+
+  // keep the phone awake while playing (works on https, i.e. GitHub Pages)
+  let wakeLock = null;
+  async function keepAwake() { try { if ('wakeLock' in navigator && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !joined) return;
+    keepAwake();
+    if (mode === 'peer' && !(conn && conn.open)) connect();
+  });
+
+  window.__padDebug = () => ({ id, room, mode, joined, connecting, conn: conn && { open: conn.open, cid: conn.cid }, peer: peer && peer.id });
+
+  // ---------- join ----------
+  function show(s) { document.querySelectorAll('.screen').forEach(x => x.classList.toggle('on', x.id === s)); }
+  $('roomCode').addEventListener('input', () => { $('roomCode').value = cleanCode($('roomCode').value); $('roomCode').classList.remove('bad'); });
+  $('join').onclick = async () => {
+    await modeReady;
+    if (mode === 'peer' && $('roomRow').style.display !== 'none') {
+      const c = cleanCode($('roomCode').value);
+      if (c.length !== 4) { $('roomCode').classList.add('bad'); $('roomCode').focus(); return; }
+      if (c !== room) { if (joined) switchRoom(c); else { room = c; try { localStorage.setItem('jmu_last_room', room); } catch {} } }
+    }
+    profile.name = ($('name').value || '').trim().toUpperCase().slice(0, 12) || 'ROOKIE';
+    saveProfile();
+    $('nm').textContent = profile.char === 'joe' ? 'JOE MASTER' : masterName(profile.name);
+    sessionStorage.setItem('tb_joined', '1');
+    try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } catch {}
+    try { screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {}); } catch {}
+    keepAwake();
+    show('pad');
+    if (!joined) { joined = true; connect(); } else send({ t: 'profile', profile });
+  };
+  $('gear').onclick = () => show('setup');
+  (async () => {
+    await modeReady;
+    if (sessionStorage.getItem('tb_joined') && profile.name && (mode === 'ws' || room)) {
+      $('nm').textContent = profile.char === 'joe' ? 'JOE MASTER' : masterName(profile.name);
+      show('pad'); joined = true; connect();
+    }
+  })();
+
+  // ---------- controls ----------
+  let held = 0, sx = 0, sy = 0, lastSent = '', sendT = 0;
+  function pushInput(force) {
+    const now = performance.now();
+    const key = `${sx.toFixed(2)},${sy.toFixed(2)},${held}`;
+    if (key === lastSent && !force) return;
+    if (!force && now - sendT < 30) { setTimeout(() => pushInput(), 32 - (now - sendT)); return; }
+    lastSent = key; sendT = now;
+    send({ t: 'i', x: +sx.toFixed(2), y: +sy.toFixed(2), b: held });
+  }
+  setInterval(() => pushInput(true), 250); // heartbeat so a dropped packet can't leave a button stuck
+
+  // joystick: appears wherever the left thumb lands
+  const stick = $('stick'), base = stick.querySelector('.base'), knob = stick.querySelector('.knob');
+  let sp = null;
+  stick.addEventListener('pointerdown', e => {
+    if (sp) return;
+    stick.setPointerCapture(e.pointerId);
+    const r = stick.getBoundingClientRect();
+    sp = { id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top };
+    base.style.left = knob.style.left = sp.ox + 'px'; base.style.top = knob.style.top = sp.oy + 'px';
+    base.style.display = knob.style.display = 'block';
+    stick.querySelector('.ghost').style.display = 'none';
+  });
+  stick.addEventListener('pointermove', e => {
+    if (!sp || e.pointerId !== sp.id) return;
+    const r = stick.getBoundingClientRect();
+    let dx = e.clientX - r.left - sp.ox, dy = e.clientY - r.top - sp.oy;
+    const R = 60, d = Math.hypot(dx, dy);
+    if (d > R) { dx *= R / d; dy *= R / d; }
+    knob.style.left = sp.ox + dx + 'px'; knob.style.top = sp.oy + dy + 'px';
+    sx = dx / R; sy = -dy / R; // up = +1
+    if (Math.hypot(sx, sy) < 0.15) sx = sy = 0;
+    pushInput();
+  });
+  const endStick = e => {
+    if (!sp || e.pointerId !== sp.id) return;
+    sp = null; sx = sy = 0; base.style.display = knob.style.display = 'none'; pushInput(true);
+  };
+  stick.addEventListener('pointerup', endStick);
+  stick.addEventListener('pointercancel', endStick);
+
+  // buttons (multi-touch: each button tracks its own pointers)
+  function wireButton(el) {
+    const bit = +el.dataset.b; const ptrs = new Set();
+    const set = on => {
+      el.classList.toggle('dn', on);
+      if (on) { held |= bit; if (navigator.vibrate) navigator.vibrate(8); } else held &= ~bit;
+      pushInput(true);
+    };
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture(e.pointerId); ptrs.add(e.pointerId); if (ptrs.size === 1) set(true); });
+    const up = e => { if (!ptrs.delete(e.pointerId)) return; if (ptrs.size === 0) set(false); };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    el.addEventListener('lostpointercapture', up);
+  }
+  document.querySelectorAll('[data-b]').forEach(wireButton);
+  const st = $('start');
+  st.addEventListener('pointerdown', e => { e.preventDefault(); st.classList.add('dn'); send({ t: 'start' }); if (navigator.vibrate) navigator.vibrate(20); });
+  st.addEventListener('pointerup', () => st.classList.remove('dn'));
+  st.addEventListener('pointercancel', () => st.classList.remove('dn'));
+
+  // stop the page from scrolling / zooming on the pad
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  $('pad').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  $('pad').addEventListener('contextmenu', e => e.preventDefault());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JOE MASTER UNIVERSE</title>
+<link rel="icon" href="img/icon.jpg">
+<style>
+  :root { --gold: #ffd34d; --red: #e3262f; --ink: #08080e; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #fff; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
+  canvas#c { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  .chrome { font-family: Impact, "Arial Black", sans-serif; font-style: italic; letter-spacing: 1px; text-transform: uppercase;
+    background: linear-gradient(#fff 0%, #fff 38%, var(--gold) 55%, #ff7a1a 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 2px #000; paint-order: stroke fill; filter: drop-shadow(0 4px 0 #000); }
+  .panel { background: linear-gradient(160deg, #1b1b2ef0, #0b0b14f0); border: 2px solid #3a3a58; box-shadow: 0 0 0 2px #000, 0 10px 30px #000a; }
+
+  /* ---------- lobby ---------- */
+  #lobby { position: fixed; inset: 0; display: none; pointer-events: none; }
+  #lobby.on { display: block; }
+  #lobby > * { pointer-events: auto; }
+  #logo { position: absolute; left: 3vw; top: 3vh; }
+  #logo h1 { margin: 0; font-size: clamp(36px, 6vw, 92px); line-height: .9; transform: skewX(-10deg); }
+  #logo .tag { margin-top: 6px; font: italic 700 clamp(10px, 1.1vw, 16px) "Trebuchet MS", sans-serif; letter-spacing: 6px; color: #c9c9e8; text-shadow: 0 2px 0 #000; }
+  #join { position: absolute; left: 3vw; bottom: 4vh; padding: 16px; display: flex; gap: 18px; align-items: center; transform: skewX(-4deg); border-left: 6px solid var(--red); }
+  #join > * { transform: skewX(4deg); }
+  #qr { width: clamp(120px, 15vw, 210px); height: auto; image-rendering: pixelated; background: #fff; border: 4px solid #fff; display: block; }
+  #join h2 { margin: 0 0 6px; font-size: clamp(18px, 2vw, 30px); }
+  #joinUrl { font: 700 clamp(13px, 1.2vw, 18px) ui-monospace, Consolas, monospace; color: var(--gold); word-break: break-all; }
+  #roomBox { font: italic 900 clamp(16px, 1.6vw, 24px) Impact, sans-serif; letter-spacing: 3px; color: #c9a6ff; margin-bottom: 4px; }
+  #roomBox b { color: #fff; font-size: 1.5em; letter-spacing: 6px; }
+  #join p { margin: 8px 0 0; font-size: 13px; color: #b9b9d6; max-width: 280px; line-height: 1.4; }
+  #side { position: absolute; right: 3vw; top: 3vh; bottom: 3vh; width: min(380px, 34vw); display: flex; flex-direction: column; gap: 12px; justify-content: space-between; pointer-events: none; }
+  #side > * { pointer-events: auto; }
+  #roster { padding: 14px; transform: skewX(-4deg); border-right: 6px solid var(--gold); flex: none; }
+  #roster > * { transform: skewX(4deg); }
+  #roster h3 { margin: 0 0 10px; font-size: 22px; }
+  #slots { display: grid; gap: 8px; }
+  .slot { position: relative; display: grid; grid-template-columns: 34px 52px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center;
+    background: #0c0c16; border: 2px solid #2b2b44; border-left: 6px solid var(--sc); padding: 6px 30px 6px 6px; min-height: 66px; }
+  .slot.drop { outline: 3px dashed var(--gold); }
+  .slot .pn { grid-row: 1 / 3; font: italic 900 22px Impact, sans-serif; color: var(--sc); text-shadow: 0 2px 0 #000; }
+  .slot .face { grid-row: 1 / 3; width: 46px; height: 52px; object-fit: cover; image-rendering: pixelated; border: 2px solid #000; cursor: pointer; background: #333; }
+  .slot .who { font: italic 900 20px Impact, sans-serif; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot .kind { font-size: 12px; color: #9a9ab8; }
+  .slot.empty { opacity: .45; grid-template-columns: 34px 1fr; }
+  .slot.empty .who, .slot.empty .kind { grid-column: 2; }
+  .slot.star { background: linear-gradient(90deg, #2a1050, #0c0c16 70%); border-color: #7a34d8; box-shadow: 0 0 12px #9b4dff66; }
+  .slot.star .who { color: #e2cbff; }
+  button.b.joe { background: linear-gradient(#a45cff, #5d22b8); }
+  .pc.star { box-shadow: 0 0 0 2px var(--sc), 0 0 16px 2px #9b4dffaa; background: linear-gradient(#2a1050e6, #000e); }
+  #banner.joe { background: linear-gradient(#fff 0%, #fff 38%, #d7b6ff 55%, #9b4dff 100%); -webkit-background-clip: text; background-clip: text; }
+  #logo .uni { font-size: clamp(20px, 3vw, 46px); transform: skewX(-10deg); margin-top: -4px; letter-spacing: 6px;
+    background: linear-gradient(#fff 0%, #e6d2ff 45%, #9b4dff 100%); -webkit-background-clip: text; background-clip: text; }
+  #ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; overflow: hidden; background: linear-gradient(#2a1050, #12081f); border-top: 2px solid #9b4dff;
+    font: italic 900 14px/26px Impact, "Arial Black", sans-serif; letter-spacing: 1px; color: #fff; white-space: nowrap; }
+  #ticker .track { display: inline-block; animation: tick 60s linear infinite; padding-left: 100%; }
+  #ticker span { padding: 0 6px; } #ticker i { color: #c9a6ff; font-style: normal; padding: 0 10px; }
+  @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  #join, #help { margin-bottom: 26px; } #side { bottom: calc(3vh + 26px); }
+  #tape { position: fixed; left: 3vw; top: 18vh; width: min(340px, 30vw); padding: 14px 16px; transform: translateX(-120%) skewX(-6deg); transition: transform .5s cubic-bezier(.2,1.4,.4,1);
+    border-left: 6px solid #9b4dff; z-index: 5; }
+  #tape.on { transform: translateX(0) skewX(-6deg); }
+  #tape > * { transform: skewX(6deg); }
+  #tape .th { font-size: 26px; margin-bottom: 8px; }
+  #tape .row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid #2b2b44; font-size: 13px; color: #b9b9d6; letter-spacing: 2px; }
+  #tape .row b { font: italic 900 19px Impact, sans-serif; color: #fff; letter-spacing: 1px; }
+  #tape .row.hl { color: #d7b6ff; font-weight: 700; justify-content: center; }
+  .slot .x { position: absolute; right: 4px; top: 4px; background: none; border: none; color: #888; font-size: 16px; cursor: pointer; }
+  .slot .x:hover { color: #fff; }
+  .btns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  button.b { flex: 1; padding: 10px 12px; font: italic 900 16px Impact, sans-serif; letter-spacing: 1px; color: #fff; background: linear-gradient(#3a3a5a, #22223a);
+    border: 2px solid #000; box-shadow: 0 3px 0 #000, inset 0 1px 0 #ffffff30; cursor: pointer; text-transform: uppercase; }
+  button.b:hover:not(:disabled) { filter: brightness(1.25); }
+  button.b:disabled { opacity: .4; cursor: default; }
+  button.b.go { flex-basis: 100%; font-size: 24px; padding: 12px; background: linear-gradient(#ff5a4f, #b81b22); }
+  #help { padding: 10px 14px; font-size: 12px; color: #c9c9e8; line-height: 1.5; transform: skewX(-4deg); flex: 0 1 auto; overflow: hidden; }
+  @media (max-height: 760px) { .slot { min-height: 54px; padding-top: 3px; padding-bottom: 3px; } #help .opt { display: none; } }
+  #help > * { transform: skewX(4deg); }
+  #help b { color: var(--gold); }
+  #help .k { display: inline-block; min-width: 18px; padding: 0 4px; border: 1px solid #555; border-radius: 3px; background: #111; font: 700 11px ui-monospace, monospace; text-align: center; color: #fff; }
+  #soundHint { position: absolute; left: 50%; top: 2vh; transform: translateX(-50%); padding: 6px 14px; background: #000c; border: 1px solid #444; font-size: 13px; color: #ccc; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; left: 0; right: 0; bottom: 2vh; display: none; justify-content: center; gap: 1.2vw; pointer-events: none; padding: 0 2vw; }
+  #hud.on { display: flex; }
+  .pc { display: flex; gap: 8px; align-items: center; width: min(300px, 23vw); padding: 6px 10px 6px 6px; transform: skewX(-10deg);
+    background: linear-gradient(#000c, #000e); border: 2px solid #000; box-shadow: 0 0 0 2px var(--sc); }
+  .pc > * { transform: skewX(10deg); }
+  .pc img { width: 44px; height: 50px; object-fit: cover; border: 2px solid var(--sc); image-rendering: pixelated; flex: none; }
+  .pc .info { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .pc .nm { font: italic 900 clamp(13px, 1.3vw, 19px) Impact, sans-serif; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 0 #000; }
+  .pc .nm span { color: var(--sc); }
+  .pc .hp, .pc .sp { height: 11px; background: #200; border: 1px solid #000; box-shadow: 0 0 0 1px #555; overflow: hidden; }
+  .pc .sp { height: 6px; background: #111; }
+  .pc .hp i, .pc .sp i { display: block; height: 100%; width: 100%; background: linear-gradient(#9dff8a, #1fae3a); transition: width .25s; }
+  .pc .sp i { background: linear-gradient(#ffe97a, #e69a00); width: 0; }
+  .pc .sp.full i { background: linear-gradient(#fff, #ff3cf0); animation: fl .25s infinite alternate; }
+  @keyframes fl { to { filter: brightness(1.7); } }
+  .pc.out { opacity: .35; filter: grayscale(1); }
+  .pc.dc .nm::after { content: " (DC)"; color: #f66; }
+
+  /* ---------- banner ---------- */
+  #banner { position: fixed; left: 0; right: 0; top: 30vh; text-align: center; pointer-events: none; opacity: 0;
+    font: italic 900 clamp(40px, 7vw, 110px)/1 Impact, "Arial Black", sans-serif; text-transform: uppercase; letter-spacing: 2px;
+    background: linear-gradient(#fff 0%, #fff 40%, var(--gold) 58%, #ff7a1a 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 3px #000; paint-order: stroke fill; filter: drop-shadow(0 6px 0 #000); }
+  #banner small { display: block; font-size: .4em; letter-spacing: 8px; margin: 8px 0; }
+  #banner.show { animation: slam .25s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+  #banner.cnt { top: 18vh; }
+  #banner .count { font-size: 1.8em; }
+  @keyframes slam { from { opacity: 0; transform: scale(2.4) skewX(-10deg); } to { opacity: 1; transform: scale(1) skewX(-10deg); } }
+
+  /* ---------- results ---------- */
+  #results { position: fixed; right: 4vw; top: 50%; transform: translateY(-50%) skewX(-4deg); width: min(420px, 40vw); padding: 18px; display: none; border-right: 6px solid var(--gold); }
+  #results.on { display: block; }
+  #results > * { transform: skewX(4deg); }
+  #results .winner { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+  #results .winner img { width: 80px; height: 92px; object-fit: cover; border: 3px solid var(--gold); image-rendering: pixelated; }
+  #results .winner small { display: block; font: 700 14px sans-serif; letter-spacing: 6px; color: var(--gold); }
+  #results .winner b { font: italic 900 38px Impact, sans-serif; }
+  #results .row { display: grid; grid-template-columns: 26px 34px 1fr auto; gap: 10px; align-items: center; padding: 4px 0; border-top: 1px solid #2b2b44; }
+  #results .row span { font: italic 900 20px Impact, sans-serif; color: #9a9ab8; }
+  #results .row img { width: 30px; height: 34px; object-fit: cover; image-rendering: pixelated; }
+  #results .row b { font: italic 900 18px Impact, sans-serif; }
+  #results .row em { font-style: normal; color: var(--gold); font-weight: 700; }
+  #results .note { margin-top: 10px; font-size: 13px; color: #b9b9d6; }
+  #net { position: fixed; left: 50%; bottom: 1vh; transform: translateX(-50%); font-size: 12px; color: #f88; text-shadow: 0 1px 0 #000; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="lobby">
+  <div id="logo">
+    <h1 class="chrome">JOE<br>MASTER</h1>
+    <div class="uni chrome">UNIVERSE</div>
+    <div class="tag">EVERY WRESTLER IS A JOE MASTER · ONLY ONE IS THE ORIGINAL</div>
+  </div>
+  <div id="join" class="panel">
+    <img id="qr" alt="QR code to join">
+    <div>
+      <h2 class="chrome">SCAN TO JOIN</h2>
+      <div id="roomBox" style="display:none">ROOM <b id="room"></b></div>
+      <div id="joinUrl">Setting up…</div>
+      <p>Any phone with internet. Play as <b style="color:#c79bff">THE ORIGINAL JOE MASTER</b>, or type your name and become <b style="color:#c79bff">YOUR-NAME MASTER</b> from a random universe.</p>
+    </div>
+  </div>
+  <div id="side">
+  <div id="roster" class="panel">
+    <h3 class="chrome">THE ROSTER</h3>
+    <div id="slots"></div>
+    <div class="btns">
+      <button class="b" id="addCpu">+ CPU</button>
+      <button class="b" id="addKb">+ KEYBOARD</button>
+      <button class="b joe" id="addJoe">+ ORIGINAL JOE</button>
+      <button class="b" id="musicBtn">♪ MUSIC: ON</button>
+      <button class="b" id="filterBtn">FILTER</button>
+      <button class="b go" id="startBtn">START MATCH ▸</button>
+    </div>
+  </div>
+  <div id="help" class="panel">
+    <div><b>□ STRIKE</b> jab → hook → kick combo · stomp people who are down</div>
+    <div><b>○ GRAB</b> grab · grab again = body slam · pull back + grab = suplex · on a downed opponent = <b>PIN</b> · full meter: <b>SMALL PACKAGE</b> or pull back for the <b>MIC DROP</b></div>
+    <div><b>✕ RUN</b> hold to run, bounce off the ropes · strike while running = clothesline</div>
+    <div><b>△ BLOCK</b> stops strikes (grabs beat blocks) · <b>TAUNT</b> fills your finisher bar</div>
+    <div>Mash any button to escape grabs, get up and kick out. Pin everyone else to win.</div>
+    <div class="opt" style="margin-top:6px;color:#c9a6ff" id="musicInfo"></div>
+    <div class="opt" style="margin-top:6px;opacity:.75">Keyboard: <span class="k">WASD</span> <span class="k">J</span> strike <span class="k">K</span> grab <span class="k">⇧</span> run <span class="k">L</span> block <span class="k">I</span> taunt · <span class="k">Enter</span> start · <span class="k">C</span> add CPU · <span class="k">P</span> filter · <span class="k">M</span> announcer · <span class="k">N</span> music · <span class="k">Esc</span> lobby</div>
+  </div>
+  </div>
+  <div id="soundHint">Click anywhere for sound &amp; music</div>
+  <div id="ticker"></div>
+</div>
+
+<div id="hud"></div>
+<div id="tape" class="panel">
+  <div class="th chrome">TALE OF THE TAPE</div>
+  <div class="row"><span>HEIGHT</span><b>6'0"</b></div>
+  <div class="row"><span>WEIGHT</span><b>84 KG</b></div>
+  <div class="row"><span>NICKNAME</span><b>THE PODFATHER</b></div>
+  <div class="row"><span>SIGNATURE</span><b>SMALL PACKAGE</b></div>
+  <div class="row"><span>DEBUT</span><b>2025</b></div>
+  <div class="row hl">WORLD'S MOST FAMOUS PODCAST HOST</div>
+</div>
+<div id="banner"></div>
+
+<div id="results" class="panel">
+  <div class="winner"></div>
+  <div class="table"></div>
+  <div class="btns">
+    <button class="b go" id="rematch">REMATCH ▸</button>
+    <button class="b" id="toLobby">BACK TO LOBBY</button>
+  </div>
+  <div class="note">Phones can press START for a rematch.</div>
+</div>
+<div id="net"></div>
+
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<script type="module" src="js/host.js"></script>
+</body>
+</html>
