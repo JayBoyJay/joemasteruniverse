@@ -8,23 +8,6 @@ There is a multiverse of Joe Masters, and they fight each other. Only one of the
 
 The game is a plain website, so GitHub can host it for free. Phones connect straight to the game screen over the internet. PeerJS's free connection service only introduces them, then the button presses go device-to-device.
 
-1. **Make a GitHub account** at github.com/signup. The username becomes the web address, so pick something like `joemasteruniverse` to get **https://joemasteruniverse.github.io**.
-2. **Create a repository** (the **+** at the top right → *New repository*) named exactly `YOUR-USERNAME.github.io`, for example `joemasteruniverse.github.io`. Leave it **Public**.
-3. **Upload the game:** on the new repo's page click *uploading an existing file*. Drag in **everything inside** this folder: `index.html`, `play.html`, the `js`, `img`, `vendor`, `music`, `server` and `tools` folders, plus `.github` and `.nojekyll` if Windows shows them. Click *Commit changes*.
-4. **Turn on Pages:** go to *Settings → Pages*, set **Source** to *Deploy from a branch*, choose **main** and **/ (root)**, then *Save*.
-5. Wait a minute or two, then open **https://YOUR-USERNAME.github.io** on the TV or laptop. Phones scan the QR, or go to the same address and type the **room code** shown on screen.
-
-To update the game later, upload the changed files the same way; GitHub republishes automatically.
-
-**Adding music later:** upload songs into `music/background` (or `music/intro` for a separate entrance song). A built-in GitHub Action updates the music list (`music/music.json`) for you. If the music doesn't show up, check *Settings → Actions → General → Workflow permissions* is set to *Read and write*. Or run `node tools/update-music.js` on your PC and upload the new `music/music.json`.
-
-**Your own domain (optional):** buy one (e.g. joemaster.com.au), then put it in *Settings → Pages → Custom domain* and follow GitHub's instructions for your domain seller.
-
-**Good to know**
-- The repository is public, so anyone who finds it can download the files, including Joe's theme.
-- It needs internet on the TV and the phones. The phones don't have to be on the same Wi-Fi, though phones on the same Wi-Fi connect most reliably.
-- The room code stays the same when you refresh the game screen, and phones reconnect by themselves.
-
 ## Play without internet (optional)
 
 Run it from your own PC on your Wi-Fi instead. You need [Node.js](https://nodejs.org), and nothing else to install.
