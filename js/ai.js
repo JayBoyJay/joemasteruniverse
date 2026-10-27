@@ -1,5 +1,5 @@
 // CPU wrestler: produces the same input frames a phone would.
-import { BTN, STANDING } from './game.js';
+import { BTN, STANDING, pinBarPos } from './game.js';
 
 export class CpuBrain {
   constructor(w, level = 1) {
@@ -24,7 +24,13 @@ export class CpuBrain {
 
     switch (w.state) {
       case 'grappled': mash(this.mashRate * 0.9); return out;
-      case 'pinned': mash(this.mashRate * (w.hp > 30 ? 1.1 : 0.8)); return out;
+      case 'pinned': { // time the kick-out bar like a human would: decent reactions, the odd panic tap
+        const B = w.pinBar; if (!B || B.lock > 0) return out;
+        const inZone = Math.abs(pinBarPos(B) - B.c) <= B.w / 2;
+        const p = inZone ? dt * (5 + this.level * 2) : dt * 0.25;
+        if (Math.random() < p) { out.mash = 1; out.pressed |= BTN.STRIKE; }
+        return out;
+      }
       case 'down': mash(this.mashRate * 0.5); return out;
       case 'grapple': {
         this.grabT += dt;

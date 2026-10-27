@@ -70,6 +70,19 @@
   input[type=range] { width: 100%; }
 
   /* ---------- pad ---------- */
+  #pinPad { position: absolute; inset: 0; top: 80px; z-index: 5; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: #0a0006e8; touch-action: none; padding: 0 6vw; }
+  #pinPad.on { display: flex; }
+  #pinPad .t { font: italic 900 clamp(26px, 7vmin, 46px) Impact, sans-serif; letter-spacing: 2px; color: #fff; text-shadow: 0 3px 0 #000; text-align: center; }
+  #pinPad .s { font: 700 14px system-ui; letter-spacing: 2px; color: #c9c9e0; text-align: center; }
+  #ppTrack { position: relative; width: 100%; height: clamp(54px, 14vmin, 90px); background: linear-gradient(#3a0a0a, #200404); border: 3px solid #000; border-radius: 8px; box-shadow: 0 0 0 2px #666; }
+  #ppZone { position: absolute; top: 0; bottom: 0; background: linear-gradient(#8aff7a, #1fae3a); box-shadow: 0 0 18px #4dff6a; }
+  #ppMark { position: absolute; top: -12px; bottom: -12px; width: 12px; margin-left: -6px; background: #fff; border: 2px solid #000; border-radius: 3px; box-shadow: 0 0 10px #fff; }
+  #ppPips i { display: inline-block; width: 26px; height: 26px; margin: 0 6px; border: 3px solid #fff; border-radius: 50%; }
+  #ppPips i.on { background: #4dff6a; border-color: #4dff6a; box-shadow: 0 0 12px #4dff6a; }
+  #pinPad.hit #ppTrack { box-shadow: 0 0 0 5px #4dff6a, 0 0 30px #4dff6a; }
+  #pinPad.miss #ppTrack { box-shadow: 0 0 0 5px #ff3b3b; }
+  #pinPad.locked #ppMark { opacity: .35; }
   #pad { background: radial-gradient(ellipse at 50% 120%, #1c1c33 0%, var(--bg) 70%); }
   #hud { position: absolute; left: 0; right: 0; top: 0; padding: max(8px, env(safe-area-inset-top)) 12px 8px;
     display: flex; align-items: center; gap: 10px; background: linear-gradient(#000a, #0000); }
@@ -188,6 +201,7 @@
     <button id="gear" aria-label="Edit wrestler">⚙</button>
   </div>
   <div id="status">CONNECTING…</div>
+  <div id="pinPad"><div class="t">YOU'RE BEING PINNED!</div><div id="ppTrack"><div id="ppZone"></div><div id="ppMark"></div></div><div id="ppPips"></div><div class="s">TAP ANYWHERE WHEN THE MARKER IS IN THE GREEN</div></div>
   <div id="stick"><div class="ghost">MOVE<br>touch anywhere</div><div class="base"></div><div class="knob"></div></div>
   <div id="btns">
     <div class="dia">
@@ -450,7 +464,7 @@
     }
     else if (m.t === 'full') { showMsg('RING IS FULL', '4 wrestlers max. You\'ll get in when a spot opens.'); }
     else if (m.t === 'phase') {
-      phase = m.phase;
+      phase = m.phase; if (phase !== 'match') pinMsg({ on: 0 });
       $('start').style.display = m.canStart ? 'block' : 'none';
       $('mapBtn').style.display = m.canMap ? 'block' : 'none';
       if (m.map) $('mapBtn').textContent = 'MAP: ' + m.map + ' ▶';
@@ -462,6 +476,7 @@
       $('sp').classList.toggle('full', m.sp >= 100);
       if (m.msg !== undefined) status(m.msg);
     }
+    else if (m.t === 'pin') pinMsg(m);
     else if (m.t === 'vibe') {
       if (navigator.vibrate) navigator.vibrate(m.ms || 40);
       const f = $('flash'); f.style.transition = 'none'; f.style.opacity = Math.min(0.5, (m.ms || 40) / 200);
@@ -573,6 +588,36 @@
     el.addEventListener('lostpointercapture', up);
   }
   document.querySelectorAll('[data-b]').forEach(wireButton);
+  // ---------- kick-out bar (when pinned) ----------
+  // The host sends the bar; this phone runs its own copy and judges its own taps, so lag can't cost you.
+  let PB = null, ppRaf = 0;
+  const pp = $('pinPad');
+  const ppPos = now => { const x = ((PB.ph + (now - PB.t0) / 1000 * PB.sp) % 2 + 2) % 2; return x < 1 ? x : 2 - x; };
+  function pinMsg(m) {
+    if (!m.on) { PB = null; pp.classList.remove('on'); cancelAnimationFrame(ppRaf); return; }
+    const now = performance.now();
+    const fresh = !PB;
+    PB = { ...m, t0: now, lockUntil: Math.max(PB ? PB.lockUntil : 0, now + (m.lock || 0) * 1000) };
+    $('ppZone').style.left = (m.c - m.w / 2) * 100 + '%'; $('ppZone').style.width = m.w * 100 + '%';
+    $('ppPips').innerHTML = Array.from({ length: m.need }, (_, i) => `<i class="${i < m.hits ? 'on' : ''}"></i>`).join('');
+    if (fresh) {
+      held = 0; document.querySelectorAll('.pb.dn').forEach(b => b.classList.remove('dn')); pushInput(true);
+      pp.classList.add('on'); if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+      const loop = () => { if (!PB) return; const t = performance.now(); $('ppMark').style.left = ppPos(t) * 100 + '%'; pp.classList.toggle('locked', t < PB.lockUntil); ppRaf = requestAnimationFrame(loop); };
+      loop();
+    }
+  }
+  pp.addEventListener('pointerdown', e => {
+    e.preventDefault(); if (!PB) return;
+    const now = performance.now(); if (now < PB.lockUntil) return;
+    const hit = Math.abs(ppPos(now) - PB.c) <= PB.w / 2;
+    send({ t: 'pinTap', hit });
+    PB.lockUntil = now + (hit ? 200 : 450);
+    pp.classList.remove('hit', 'miss'); void pp.offsetWidth; pp.classList.add(hit ? 'hit' : 'miss');
+    setTimeout(() => pp.classList.remove('hit', 'miss'), 300);
+    if (navigator.vibrate) navigator.vibrate(hit ? 40 : 140);
+  });
+
   const st = $('start');
   st.addEventListener('pointerdown', e => { e.preventDefault(); st.classList.add('dn'); send({ t: 'start' }); if (navigator.vibrate) navigator.vibrate(20); });
   st.addEventListener('pointerup', () => st.classList.remove('dn'));

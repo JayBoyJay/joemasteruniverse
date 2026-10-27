@@ -68,6 +68,8 @@ Pick the map in the lobby with the ◀ ▶ arrows (or the arrow keys). Any phone
 
 The ring-less maps have walls instead of ropes: you bounce off them when running. Maps are in `js/maps.js`.
 
+The fighting space is 8m across inside the ropes. To change it, edit `ROPE` in `js/tex.js`; every map spreads its props out to match.
+
 ## On a TV
 
 The lobby is laid out for a 16:9 screen and scales to whatever size the browser window is. Press `F` (or the ⛶ FULLSCREEN button) to go full screen.
@@ -92,7 +94,8 @@ The game believes everything Joe believes about himself:
 | △ BLOCK | stops strikes (grabs beat blocks) |
 | TAUNT | signature pose, fills your meter |
 
-- **Mash any button** to escape grabs, get up faster, and kick out of pins.
+- **Mash any button** to escape grabs and get up faster.
+- **Kick-out bar:** when you're pinned, a bar pops up on your phone (and on the TV). Tap anywhere when the sliding marker is in the green zone. Two hits kick out (three against a Small Package). The lower your health, the smaller the green zone and the faster the marker. A miss locks you out for a moment. Keyboard players tap any button.
 - Free-for-all: pin someone for a 3-count and they're out. The last Master standing wins.
 
 Keyboard player on the PC: `WASD` move, `J` strike, `K` grab, `Shift` run, `L` block, `I` taunt.

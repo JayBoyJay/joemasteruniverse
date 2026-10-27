@@ -2,9 +2,10 @@
 import * as THREE from 'three';
 
 export const RING_H = 1.0;       // mat height above the arena floor
-export const ROPE = 3.0;         // ropes run at +/- this (ring is 6m inside the ropes)
-export const LIM = 2.62;         // how far a standing wrestler's centre can go
-export const APRON = 3.75;
+export const ROPE = 4.0;         // ropes run at +/- this (ring is 8m inside the ropes)
+export const LIM = ROPE - 0.38;  // how far a standing wrestler's centre can go
+export const APRON = ROPE + 0.75;
+export const SPACE = ROPE / 3;   // how much bigger the fighting space is than the original 6m ring (maps spread their props by this)
 
 export function canvasTex(w, h, draw, { nearest = false, repeat = null } = {}) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;

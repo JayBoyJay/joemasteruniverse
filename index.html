@@ -109,6 +109,21 @@
   .pc.star { box-shadow: 0 0 0 3px var(--sc), 0 0 22px 3px #9b4dffaa; background: linear-gradient(#2a1050e6, #000e); }
 
   /* ---------- banner ---------- */
+  /* kick-out bar */
+  #pinBar { position: absolute; left: 50%; bottom: 220px; width: 900px; margin-left: -450px; display: none; padding: 14px 22px 20px;
+    background: linear-gradient(#000d, #000e); border: 3px solid #000; box-shadow: 0 0 0 3px var(--sc, #fff), 0 12px 40px #000c; transform: skewX(-8deg); }
+  #pinBar.on { display: block; }
+  #pinBar > * { transform: skewX(8deg); }
+  #pinBar .lbl { font: italic 900 34px Impact, sans-serif; letter-spacing: 2px; text-align: center; margin-bottom: 10px; text-shadow: 0 3px 0 #000; }
+  #pinBar .lbl b { color: var(--sc, #fff); }
+  #pinPips i { display: inline-block; width: 22px; height: 22px; margin-left: 8px; border: 3px solid #fff; border-radius: 50%; vertical-align: -2px; }
+  #pinPips i.on { background: #4dff6a; border-color: #4dff6a; box-shadow: 0 0 12px #4dff6a; }
+  #pinBar .track { position: relative; height: 46px; background: linear-gradient(#3a0a0a, #200404); border: 3px solid #000; box-shadow: 0 0 0 2px #666; }
+  #pinZone { position: absolute; top: 0; bottom: 0; background: linear-gradient(#8aff7a, #1fae3a); box-shadow: 0 0 18px #4dff6a; }
+  #pinMark { position: absolute; top: -10px; bottom: -10px; width: 10px; margin-left: -5px; background: #fff; border: 2px solid #000; box-shadow: 0 0 10px #fff; }
+  #pinBar.hit .track { box-shadow: 0 0 0 4px #4dff6a, 0 0 30px #4dff6a; }
+  #pinBar.miss .track { box-shadow: 0 0 0 4px #ff3b3b; animation: pinShake .08s 3; }
+  @keyframes pinShake { 50% { transform: translateX(8px); } }
   #banner { position: absolute; left: 0; right: 0; top: 300px; text-align: center; opacity: 0;
     font: italic 900 160px/1 Impact, "Arial Black", sans-serif; text-transform: uppercase; letter-spacing: 3px;
     background: linear-gradient(#fff 0%, #fff 40%, var(--gold) 58%, #ff7a1a 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -210,6 +225,7 @@
   <div class="row hl">WORLD'S MOST FAMOUS PODCAST HOST</div>
 </div>
 <div id="banner" class="ghost"></div>
+<div id="pinBar" class="ghost"><div class="lbl"><b id="pinWho"></b> · KICK OUT! <span id="pinPips"></span></div><div class="track"><div id="pinZone"></div><div id="pinMark"></div></div></div>
 
 <div id="results" class="panel">
   <div class="winner"></div>

@@ -3,11 +3,11 @@ import * as THREE from 'three';
 import { RetroRenderer } from './ps2.js';
 import { Arena, MAPS } from './arena.js';
 import { Rig } from './rig.js';
-import { Match, Wrestler, BTN } from './game.js';
+import { Match, Wrestler, BTN, pinBarPos } from './game.js';
 import { CpuBrain } from './ai.js';
 import { Sound, Music } from './audio.js';
 import { Fx, makeMarker } from './fx.js';
-import { RING_H } from './tex.js';
+import { RING_H, SPACE } from './tex.js';
 import { poseFor } from './poses.js';
 import { HostNet } from './net.js';
 import { qrDataUrl } from './qr.js';
@@ -19,7 +19,7 @@ const $ = id => document.getElementById(id);
 
 // ---------- input buffering (so quick taps between frames aren't lost) ----------
 class Input {
-  constructor() { this.x = 0; this.y = 0; this.held = 0; this.pressed = 0; this.mash = 0; }
+  constructor() { this.x = 0; this.y = 0; this.held = 0; this.pressed = 0; this.mash = 0; this.pinTap = null; }
   set(x, y, held) {
     this.x = +x || 0; this.y = +y || 0;
     const newly = held & ~this.held;
@@ -28,11 +28,11 @@ class Input {
     this.held = held;
   }
   consume() {
-    const f = { x: this.x, y: this.y, held: this.held, pressed: this.pressed, mash: this.mash };
-    this.pressed = 0; this.mash = 0;
+    const f = { x: this.x, y: this.y, held: this.held, pressed: this.pressed, mash: this.mash, pinTap: this.pinTap };
+    this.pressed = 0; this.mash = 0; this.pinTap = null;
     return f;
   }
-  clear() { this.x = this.y = 0; this.held = this.pressed = this.mash = 0; }
+  clear() { this.x = this.y = 0; this.held = this.pressed = this.mash = 0; this.pinTap = null; }
 }
 
 // ---------- renderer / scene ----------
@@ -231,6 +231,7 @@ function onPad(id, ev, data) {
   }
   if (!p) return;
   if (ev === 'i') p.input.set(data.x, data.y, data.b | 0);
+  else if (ev === 'pinTap') p.input.pinTap = !!data.hit;
   else if (ev === 'profile') applyProfile(p, data.profile);
   else if (ev === 'start') requestStart();
   else if (ev === 'map') { if (phase === 'lobby') setMap(mapIndex + (data.dir < 0 ? -1 : 1)); }
@@ -384,7 +385,7 @@ function startMatch() {
   brains.clear();
   match = new Match(scene, arena);
   const roster = players.filter(Boolean);
-  const corners = [[-1.9, 1.9], [1.9, -1.9], [1.9, 1.9], [-1.9, -1.9]];
+  const c0 = 1.9 * SPACE, corners = [[-c0, c0], [c0, -c0], [c0, c0], [-c0, -c0]];
   const order = roster.length === 2 ? [0, 1] : roster.length === 3 ? [0, 1, 2] : [0, 1, 2, 3];
   roster.forEach((p, i) => {
     const rig = makeRig(p);
@@ -540,7 +541,7 @@ function padStatus(p) {
   if (w.eliminated) return match && match.over ? '' : 'ELIMINATED — HECKLE FROM RINGSIDE';
   switch (w.state) {
     case 'grappled': return 'MASH TO ESCAPE!';
-    case 'pinned': return 'MASH TO KICK OUT!!';
+    case 'pinned': return 'TAP IN THE GREEN TO KICK OUT!';
     case 'down': return 'MASH TO GET UP';
     case 'grapple': return w.sp >= 100 ? 'GRAB = SMALL PACKAGE · PULL BACK + GRAB = MIC DROP' : 'GRAB: SLAM · PULL BACK + GRAB: SUPLEX · STRIKE: KNEE';
     case 'victory': return 'YOU WIN!';
@@ -556,6 +557,37 @@ function pushPadState(dt) {
     const w = p.wrestler;
     sendTo(p.padId, { t: 'st', hp: w ? Math.round(w.hp) : 100, sp: w ? Math.round(w.sp) : 0, msg: padStatus(p) });
   }
+}
+// kick-out bar: the pinned player's phone gets its own copy of the bar (it judges its own taps),
+// and the TV shows it for everyone else
+function pushPinBars() {
+  for (const p of players) {
+    if (!p || p.kind !== 'pad') continue;
+    const w = p.wrestler, B = w && w.state === 'pinned' ? w.pinBar : null;
+    if (B) {
+      const now = performance.now();
+      if (p.sentBar === B && p.sentBarV === B.v && now - p.sentBarT < 500) continue;   // resync twice a second so phone and TV agree
+      p.sentBar = B; p.sentBarV = B.v; p.sentBarT = now;
+      sendTo(p.padId, { t: 'pin', on: 1, c: +B.c.toFixed(3), w: +B.w.toFixed(3), sp: B.speed, ph: +((B.ph + B.t * B.speed) % 2).toFixed(3), hits: B.hits, need: B.need, lock: +B.lock.toFixed(2) });
+    } else if (p.sentBar) { p.sentBar = null; sendTo(p.padId, { t: 'pin', on: 0 }); }
+  }
+}
+function updatePinUi() {
+  const el = $('pinBar');
+  const v = match && match.pin ? match.pin.v : null, B = v && v.state === 'pinned' ? v.pinBar : null;
+  el.classList.toggle('on', !!B);
+  if (!B) { el.dataset.key = ''; return; }
+  const key = v.player.slot + ':' + B.v;
+  if (el.dataset.key !== key) {
+    el.dataset.key = key;
+    el.style.setProperty('--sc', SLOT_COLORS[v.player.slot]);
+    $('pinWho').textContent = v.player.name;
+    $('pinZone').style.left = (B.c - B.w / 2) * 100 + '%'; $('pinZone').style.width = B.w * 100 + '%';
+    $('pinPips').innerHTML = Array.from({ length: B.need }, (_, i) => `<i class="${i < B.hits ? 'on' : ''}"></i>`).join('');
+  }
+  $('pinMark').style.left = pinBarPos(B) * 100 + '%';
+  el.classList.toggle('hit', B.flash > 0 && B.good);
+  el.classList.toggle('miss', B.flash > 0 && !B.good);
 }
 function vibe(w, ms) { if (w && w.player.kind === 'pad') sendTo(w.player.padId, { t: 'vibe', ms }); }
 
@@ -626,6 +658,8 @@ function handleEvents() {
         sound.say(['', 'One', 'Two', 'Three'][e.n] || '', { rate: 1.3, pitch: 0.9 });
         vibe(e.v, 60);
         break;
+      case 'pinHit': sound.pop(0.7); vibe(e.w, 60); break;
+      case 'pinMiss': sound.block(); break;
       case 'kickout': banner('KICK OUT!', 900); sound.pop(1); arena.pop(0.7); vibe(e.w, 100); break;
       case 'pinBroken': banner('PIN BROKEN!', 800); sound.pop(0.8); break;
       case 'elim':
@@ -735,7 +769,8 @@ function updateCamera(dt, t) {
     const u = Math.min(1, Math.max(0, introT - jt) / 3);
     const a = (1 - u) * 1.6 - 0.2;
     if (introT >= jt) {
-      tPos.set(Math.sin(a) * (11 - u * 3), RING_H + 1.5 + u * 3, Math.cos(a) * (11 - u * 3));
+      const r = (11 - u * 3) * (1 + (SPACE - 1) * 0.8);
+      tPos.set(Math.sin(a) * r, RING_H + 1.5 + u * 3.6, Math.cos(a) * r);
       tLook.set(0, RING_H + 0.8, 0);
     }
   } else if (match && match.winner && (phase === 'results' || match.over)) {
@@ -747,8 +782,9 @@ function updateCamera(dt, t) {
     const c = new THREE.Vector2();
     act.forEach(w => c.add(w.pos)); if (act.length) c.multiplyScalar(1 / act.length);
     let spread = 0; act.forEach(w => spread = Math.max(spread, w.pos.distanceTo(c)));
-    const dist = Math.min(8.3, 5.5 + spread * 1.0);
-    tPos.set(c.x * 0.6, RING_H + 2.6 + spread * 0.55, Math.min(8.4, c.y * 0.5 + dist));
+    const far = 8.3 + (SPACE - 1) * 6;   // the bigger ring lets the camera pull back further
+    const dist = Math.min(far, 5.5 + spread * 1.05);
+    tPos.set(c.x * 0.6, RING_H + 2.6 + spread * 0.55, Math.min(far + 0.1, c.y * 0.5 + dist));
     tLook.set(c.x * 0.85, RING_H + 0.75, c.y * 0.85);
   }
   const k = 1 - Math.exp(-dt * (phase === 'intro' ? 2.5 : 3.2));
@@ -803,6 +839,7 @@ function frame(now) {
       mk.position.set(h.x, Math.max(h.y, RING_H + 0.6) + 0.55, h.z);
     }
     updateHud();
+    updatePinUi();
     if (match.over && phase === 'match') { resultsT += dt; if (resultsT > 0) endToResults(); }
     // crowd noise follows excitement
     sound.crowd(Math.min(1, arena.excite) * (arena.map.crowd ?? 1));
@@ -810,6 +847,7 @@ function frame(now) {
     sound.crowd(0.25 * (arena.map.crowd ?? 1));
   }
   pushPadState(dt);
+  pushPinBars();
   fx.update(simDt);
   arena.update(dt);
   updateCamera(dt, time);

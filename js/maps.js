@@ -1,10 +1,13 @@
 // Venues. THE ARENA is built in arena.js; the rest are built here from the Arena toolkit
 // (A.box, A.plane, A.glow, A.flame, A.people, A.ring, A.floorArea, ...).
-// The fight area is always the same 5.2m square (see LIM in tex.js), so walls sit just outside it.
-import { RING_H, noise, mulberry, canvasTex, shade } from './tex.js';
+// Props are laid out for the original 6m ring; Arena.add() spreads positions out by SPACE so they
+// fit the bigger fighting area (see ROPE in tex.js) without stretching anything. Sizes that span
+// the whole room are multiplied by S here.
+import { RING_H, SPACE, noise, mulberry, canvasTex, shade } from './tex.js';
 
 const F = RING_H;          // floor height of walled maps
-const W = 3.45;            // wall distance from centre
+const W = 3.45;            // wall distance from centre (before spreading)
+const S = SPACE;
 
 // ---------------------------------------------------------------- shared painters
 function brick(c, w, h, base = '#6e3428', mortar = '#2a1a16') {
@@ -72,7 +75,7 @@ function iconPoster(A, THREE, w, h, x, y, z, ry, top, bottom) {
 }
 function wall(A, THREE, painter, len, ht, x, z, ry, rep = [4, 2], tw = 128, th = 128) {
   const t = canvasTex(tw, th, painter, { repeat: rep });
-  return A.add(new THREE.Mesh(new THREE.PlaneGeometry(len, ht), new THREE.MeshLambertMaterial({ map: t })), x, F + ht / 2, z, ry);
+  return A.add(new THREE.Mesh(new THREE.PlaneGeometry(len * S, ht), new THREE.MeshLambertMaterial({ map: t })), x, F + ht / 2, z, ry);
 }
 function flickerLight(A, l, base, amt = 0.25, speed = 11) {
   const ph = Math.random() * 9;
@@ -109,9 +112,9 @@ function buildStreet(A, THREE) {
     c.clearRect(0, 0, w, h); c.strokeStyle = '#b8bcc4'; c.lineWidth = 2;
     for (let i = -w; i < w * 2; i += 12) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + h, h); c.stroke(); c.beginPath(); c.moveTo(i, h); c.lineTo(i + h, 0); c.stroke(); }
   }, { repeat: [9, 4] });
-  A.add(new THREE.Mesh(new THREE.PlaneGeometry(W * 2, 3.2), new THREE.MeshLambertMaterial({ map: fenceTex, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide })), 0, F + 1.6, -3.5);
+  A.add(new THREE.Mesh(new THREE.PlaneGeometry(W * 2 * S, 3.2), new THREE.MeshLambertMaterial({ map: fenceTex, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide })), 0, F + 1.6, -3.5);
   for (const x of [-W + 0.05, -1.15, 1.15, W - 0.05]) A.cyl(0.04, 0.04, 3.3, 0x8a8e96, x, F + 1.65, -3.5, 6);
-  A.box(W * 2, 0.05, 0.05, 0x8a8e96, 0, F + 3.25, -3.5);
+  A.box(W * 2 * S, 0.05, 0.05, 0x8a8e96, 0, F + 3.25, -3.5);
   wall(A, THREE, (c, w, h) => {
     brick(c, w, h, '#3a2a30', '#141016');
     const r = mulberry(31);
@@ -218,7 +221,7 @@ function buildStudio(A, THREE) {
   neon(A, THREE, 'JOE MASTER UNIVERSE', '#c9a6ff', 3.6, 0.5, -W + 0.05, F + 3.6, 0.8, Math.PI / 2);
   neon(A, THREE, 'PODCAST', '#ff6ad5', 2.2, 0.6, W - 0.05, F + 3.4, 0.6, -Math.PI / 2);
   // LED strips
-  for (const [x, z, ry, len] of [[0, -W + 0.06, 0, W * 2], [-W + 0.06, 1.5, Math.PI / 2, 12]]) {
+  for (const [x, z, ry, len] of [[0, -W + 0.06, 0, W * 2 * S], [-W + 0.06, 1.5, Math.PI / 2, 12 * S]]) {
     const strip = A.glow(len, 0.05, 0x9b4dff, x, F + 4.1, z, ry);
     A.every((dt, t) => strip.material.color.setHSL(0.75 + 0.05 * Math.sin(t), 1, 0.55));
   }
@@ -287,8 +290,8 @@ function buildShed(A, THREE) {
   // corrugated iron walls and roof beams
   wall(A, THREE, corrugated, W * 2, 3.3, 0, -W, 0, [3, 1], 128, 64);
   for (const sx of [-1, 1]) wall(A, THREE, corrugated, 10, 3.3, sx * W, 1.5, -sx * Math.PI / 2, [4, 1], 128, 64);
-  for (const z of [-2.5, -0.5, 1.2]) A.box(W * 2 + 0.3, 0.16, 0.12, 0x6a4a2a, 0, F + 3.3, z); // none near the camera
-  A.box(0.16, 0.16, 5, 0x6a4a2a, 0, F + 3.45, -1.2);
+  for (const z of [-2.5, -0.5, 1.2]) A.box(W * 2 * S + 0.3, 0.16, 0.12, 0x6a4a2a, 0, F + 3.3, z); // none near the camera
+  A.box(0.16, 0.16, 5 * S, 0x6a4a2a, 0, F + 3.45, -1.2);
   // the bulb
   A.cyl(0.005, 0.005, 0.5, 0x222222, 0, F + 3.2, 0, 4);
   A.add(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff0c0, fog: false })), 0, F + 2.95, 0);
@@ -340,7 +343,7 @@ function buildShed(A, THREE) {
   const spots = [];
   for (let i = 0; i < 6; i++) spots.push({ x: (i < 3 ? -1 : 1) * (2.4 + (i % 3) * 0.45), y: F, z: 4.0 + (i % 2) * 0.4, rot: Math.PI });
   A.people(spots, null, 0x8a8478);
-  A.box(W * 2 + 0.2, 0.3, 0.3, 0x8a8e96, 0, F + 3.6, 3.9);  // rolled-up door, kept above the camera line
+  A.box(W * 2 * S + 0.2, 0.3, 0.3, 0x8a8e96, 0, F + 3.6, 3.9);  // rolled-up door, kept above the camera line
 }
 
 // ---------------------------------------------------------------- HELL

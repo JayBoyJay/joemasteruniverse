@@ -1,7 +1,7 @@
 // The venue: a map-driven set. THE ARENA has the ring, ropes that wobble, crowd, titantron and lighting rig;
 // the other maps (see maps.js) are built from the same toolkit of props.
 import * as THREE from 'three';
-import { RING_H, ROPE, APRON, canvasTex, noise, mulberry } from './tex.js';
+import { RING_H, ROPE, APRON, SPACE, canvasTex, noise, mulberry } from './tex.js';
 import { MAPS, MAP_BY_ID } from './maps.js';
 export { MAPS };
 
@@ -36,8 +36,9 @@ export class Arena {
     const img = new Image();
     img.onload = () => { this.icon = img; this._applyIcon(); };
     img.src = 'img/icon.jpg';
+    this.spread = 1;               // map builders place props on the original 6m layout; add() spreads them out to fit the bigger ring
     if (this.id === 'arena') this._buildArena();
-    else this.map.build(this, THREE);
+    else { this.spread = SPACE; this.map.build(this, THREE); this.spread = 1; }
   }
 
   _buildArena() {
@@ -69,7 +70,7 @@ export class Arena {
     if (typeof c === 'function') return new THREE.MeshLambertMaterial({ map: canvasTex(extra.w || 64, extra.h || 64, c, extra.texOpts || {}), ...(extra.mat || {}) });
     return new THREE.MeshLambertMaterial({ color: c, ...(extra.mat || {}) });
   }
-  add(mesh, x = 0, y = 0, z = 0, ry = 0) { mesh.position.set(x, y, z); mesh.rotation.y = ry; this.group.add(mesh); return mesh; }
+  add(mesh, x = 0, y = 0, z = 0, ry = 0) { mesh.position.set(x * this.spread, y, z * this.spread); mesh.rotation.y = ry; this.group.add(mesh); return mesh; }
   box(w, h, d, m, x, y, z, ry = 0) { return this.add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), this.mat(m)), x, y, z, ry); }
   cyl(rt, rb, h, m, x, y, z, seg = 10) { return this.add(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), this.mat(m)), x, y, z); }
   ball(r, m, x, y, z, sx = 1, sy = 1, sz = 1) { const g = new THREE.SphereGeometry(r, 10, 8); g.scale(sx, sy, sz); return this.add(new THREE.Mesh(g, this.mat(m)), x, y, z); }
@@ -86,7 +87,7 @@ export class Arena {
       : type === 'dir' ? new THREE.DirectionalLight(color, intensity)
       : type === 'hemi' ? new THREE.HemisphereLight(color, x, intensity)
       : new THREE.AmbientLight(color, intensity);
-    if (type === 'point' || type === 'dir') l.position.set(x, y, z);
+    if (type === 'point' || type === 'dir') l.position.set(x * this.spread, y, z * this.spread);
     this.group.add(l); return l;
   }
   // a texture that gets JOE MASTER's icon painted in once it has loaded
@@ -107,7 +108,7 @@ export class Arena {
     }
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: Arena.flameTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
     s.center.set(0.5, 0.1);
-    s.position.set(x, y, z); this.group.add(s);
+    s.position.set(x * this.spread, y, z * this.spread); this.group.add(s);
     const ph = Math.random() * 10;
     this.every((dt, t) => {
       const f = 0.85 + 0.15 * Math.sin(t * 17 + ph) + 0.1 * Math.sin(t * 29 + ph * 2);
@@ -136,6 +137,8 @@ export class Arena {
     }
     const per = Array.from({ length: variants }, () => []);
     const rnd = mulberry(spots.length + 3);
+    const k = this.spread;
+    spots = spots.map(sp => ({ ...sp, x: sp.x * k, z: sp.z * k }));
     for (const sp of spots) per[Math.floor(rnd() * variants)].push({ phase: rnd() * 6.28, amp: 0.5 + rnd(), ...sp });
     const geo = new THREE.PlaneGeometry(0.55, 1.1); geo.translate(0, 0.55, 0);
     per.forEach((list, v) => {
@@ -151,8 +154,10 @@ export class Arena {
   ring(style = {}) {
     this.ringStyle = { ...DEFAULT_RING, ...style };
     this.hasRing = true; this.outY = 0; this.outDist = APRON + 0.75;
+    const k = this.spread; this.spread = 1; // the ring is already built at full size
     this._ring();
     this._ropes();
+    this.spread = k;
   }
   // walled fighting area (no ring): the floor is raised to ring height so the fight code doesn't change
   floorArea(floorMat, size = 40) {

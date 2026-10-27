@@ -72,6 +72,7 @@ export class Wrestler {
 
   setState(s, move = null) {
     this.state = s; this.st = 0; this.move = move; this.hitSet.clear(); this.queued = null;
+    if (s !== 'pinned') this.pinBar = null;
   }
 
   // ---------- per-frame ----------
@@ -209,10 +210,26 @@ export class Wrestler {
       case 'pinned': {
         if (!this.partner || this.partner.state !== 'pinning') { this.partner = null; this.setState('down'); this.downTime = 0.6; break; }
         const pin = this.m.pin && this.m.pin.v === this ? this.m.pin : null;
-        const mul = pin && pin.pkg ? 0.5 : 1;        // the Small Package is very hard to escape
-        if (inp.mash) this.kickout += inp.mash * 0.11 * (0.18 + this.hp / 100) * mul;
-        this.kickout = Math.max(0, this.kickout - dt * 0.18);
-        if (this.hp > (pin && pin.pkg ? 88 : 65) && this.st > 0.9) this.kickout = 1;
+        // KICK-OUT BAR: a marker sweeps along a bar; tap while it's in the green zone.
+        // The zone shrinks as your health drops. Two hits kick out (three from a Small Package).
+        const B = this.pinBar || (this.pinBar = this.newPinBar(pin));
+        B.t += dt; B.lock = Math.max(0, B.lock - dt); B.flash = Math.max(0, B.flash - dt);
+        let tap = null;
+        if (inp.pinTap != null) tap = !!inp.pinTap;                     // phone judged it against its own copy of the bar
+        else if (inp.mash && !(this.player && this.player.kind === 'pad')) tap = Math.abs(pinBarPos(B) - B.c) <= B.w / 2;
+        if (tap !== null && B.lock <= 0) {
+          if (tap) {
+            B.hits++; B.flash = 0.3; B.good = true; B.lock = 0.2;
+            this.kickout = B.hits / B.need;
+            this.m.emit('pinHit', { w: this, hits: B.hits, need: B.need });
+            if (B.hits < B.need) this.movePinZone(B);
+          } else {
+            B.lock = 0.45; B.flash = 0.3; B.good = false;
+            this.m.emit('pinMiss', { w: this });
+          }
+          B.v++;
+        }
+        if (this.hp > (pin && pin.pkg ? 88 : 72) && this.st > 0.9) this.kickout = 1;   // barely hurt: shrug it off
         if (this.kickout >= 1) this.kickOut();
         break;
       }
@@ -470,9 +487,10 @@ export class Wrestler {
   // ---------- pins ----------
   startPin(v, opts = {}) {
     this.setState('pinning'); this.partner = v;
-    v.setState('pinned'); v.partner = this; v.kickout = 0;
+    v.setState('pinned'); v.partner = this; v.kickout = 0; v.pinBar = null;
     this.placePinner(v);
     this.m.startPin(this, v, opts);
+    v.pinBar = v.newPinBar(this.m.pin);
   }
   placePinner(v) {
     const chest = v.bodyCentre();
@@ -482,6 +500,21 @@ export class Wrestler {
     const tx = chest.x + side.x * 0.55 * s, tz = chest.y + side.y * 0.55 * s;
     this.pos.x += (tx - this.pos.x) * 0.35; this.pos.y += (tz - this.pos.y) * 0.35;
     this.yaw = Math.atan2(chest.x - this.pos.x, chest.y - this.pos.y);
+  }
+  newPinBar(pin) {
+    const pkg = !!(pin && pin.pkg);
+    const hpK = Math.max(0, Math.min(1, this.hp / 100));
+    const B = { t: 0, lock: 0, flash: 0, good: false, hits: 0, need: pkg ? 3 : 2, v: 0,
+      w: Math.max(0.06, (0.07 + 0.3 * hpK) * (pkg ? 0.75 : 1)),   // zone width: 37% of the bar at full health, 7% near zero
+      speed: 1.25 + (1 - hpK) * 0.45,                              // sweeps per second
+      ph: Math.random() * 2, c: 0.5 };
+    this.movePinZone(B);
+    return B;
+  }
+  movePinZone(B) {
+    const m = B.w / 2 + 0.04;
+    let c; do { c = m + Math.random() * (1 - 2 * m); } while (Math.abs(c - pinBarPos(B)) < 0.2 && Math.random() < 0.9);
+    B.c = c;
   }
   kickOut() {
     const p = this.partner;
@@ -706,4 +739,6 @@ export class Match {
 }
 
 const NO_INPUT = { x: 0, y: 0, held: 0, pressed: 0, mash: 0 };
+// where the kick-out marker is on its bar (0..1), bouncing end to end
+export function pinBarPos(B) { const x = ((B.ph + B.t * B.speed) % 2 + 2) % 2; return x < 1 ? x : 2 - x; }
 export { NO_INPUT, STANDING };
