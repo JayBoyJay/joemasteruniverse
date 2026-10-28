@@ -599,7 +599,7 @@
     const fresh = !PB;
     PB = { ...m, t0: now, lockUntil: Math.max(PB ? PB.lockUntil : 0, now + (m.lock || 0) * 1000) };
     $('ppZone').style.left = (m.c - m.w / 2) * 100 + '%'; $('ppZone').style.width = m.w * 100 + '%';
-    $('ppPips').innerHTML = Array.from({ length: m.need }, (_, i) => `<i class="${i < m.hits ? 'on' : ''}"></i>`).join('');
+    $('ppPips').innerHTML = Array.from({ length: m.need > 1 ? m.need : 0 }, (_, i) => `<i class="${i < m.hits ? 'on' : ''}"></i>`).join('');
     if (fresh) {
       held = 0; document.querySelectorAll('.pb.dn').forEach(b => b.classList.remove('dn')); pushInput(true);
       pp.classList.add('on'); if (navigator.vibrate) navigator.vibrate([60, 40, 60]);

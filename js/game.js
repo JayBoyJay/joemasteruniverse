@@ -211,7 +211,7 @@ export class Wrestler {
         if (!this.partner || this.partner.state !== 'pinning') { this.partner = null; this.setState('down'); this.downTime = 0.6; break; }
         const pin = this.m.pin && this.m.pin.v === this ? this.m.pin : null;
         // KICK-OUT BAR: a marker sweeps along a bar; tap while it's in the green zone.
-        // The zone shrinks as your health drops. Two hits kick out (three from a Small Package).
+        // One good tap kicks out. The only thing that changes is the zone: the lower your health, the smaller it is.
         const B = this.pinBar || (this.pinBar = this.newPinBar(pin));
         B.t += dt; B.lock = Math.max(0, B.lock - dt); B.flash = Math.max(0, B.flash - dt);
         let tap = null;
@@ -502,11 +502,10 @@ export class Wrestler {
     this.yaw = Math.atan2(chest.x - this.pos.x, chest.y - this.pos.y);
   }
   newPinBar(pin) {
-    const pkg = !!(pin && pin.pkg);
     const hpK = Math.max(0, Math.min(1, this.hp / 100));
-    const B = { t: 0, lock: 0, flash: 0, good: false, hits: 0, need: pkg ? 3 : 2, v: 0,
-      w: Math.max(0.06, (0.07 + 0.3 * hpK) * (pkg ? 0.75 : 1)),   // zone width: 37% of the bar at full health, 7% near zero
-      speed: 1.25 + (1 - hpK) * 0.45,                              // sweeps per second
+    const B = { t: 0, lock: 0, flash: 0, good: false, hits: 0, need: 1, v: 0,
+      w: 0.06 + 0.26 * hpK,   // zone width: 32% of the bar at full health, 6% near zero
+      speed: 1.4,             // sweeps per second (always the same)
       ph: Math.random() * 2, c: 0.5 };
     this.movePinZone(B);
     return B;

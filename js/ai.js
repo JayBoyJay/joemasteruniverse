@@ -27,7 +27,7 @@ export class CpuBrain {
       case 'pinned': { // time the kick-out bar like a human would: decent reactions, the odd panic tap
         const B = w.pinBar; if (!B || B.lock > 0) return out;
         const inZone = Math.abs(pinBarPos(B) - B.c) <= B.w / 2;
-        const p = inZone ? dt * (5 + this.level * 2) : dt * 0.25;
+        const p = inZone ? dt * (2 + this.level * 1.2) : dt * 0.3;
         if (Math.random() < p) { out.mash = 1; out.pressed |= BTN.STRIKE; }
         return out;
       }

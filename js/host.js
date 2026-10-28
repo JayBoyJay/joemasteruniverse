@@ -583,7 +583,7 @@ function updatePinUi() {
     el.style.setProperty('--sc', SLOT_COLORS[v.player.slot]);
     $('pinWho').textContent = v.player.name;
     $('pinZone').style.left = (B.c - B.w / 2) * 100 + '%'; $('pinZone').style.width = B.w * 100 + '%';
-    $('pinPips').innerHTML = Array.from({ length: B.need }, (_, i) => `<i class="${i < B.hits ? 'on' : ''}"></i>`).join('');
+    $('pinPips').innerHTML = Array.from({ length: B.need > 1 ? B.need : 0 }, (_, i) => `<i class="${i < B.hits ? 'on' : ''}"></i>`).join('');
   }
   $('pinMark').style.left = pinBarPos(B) * 100 + '%';
   el.classList.toggle('hit', B.flash > 0 && B.good);

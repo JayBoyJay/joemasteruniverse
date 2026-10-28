@@ -95,7 +95,7 @@ The game believes everything Joe believes about himself:
 | TAUNT | signature pose, fills your meter |
 
 - **Mash any button** to escape grabs and get up faster.
-- **Kick-out bar:** when you're pinned, a bar pops up on your phone (and on the TV). Tap anywhere when the sliding marker is in the green zone. Two hits kick out (three against a Small Package). The lower your health, the smaller the green zone and the faster the marker. A miss locks you out for a moment. Keyboard players tap any button.
+- **Kick-out bar:** when you're pinned, a bar pops up on your phone (and on the TV). Tap anywhere when the sliding marker is in the green zone. One good tap kicks out. The lower your health, the smaller the green zone. A miss locks you out for a moment. Keyboard players tap any button.
 - Free-for-all: pin someone for a 3-count and they're out. The last Master standing wins.
 
 Keyboard player on the PC: `WASD` move, `J` strike, `K` grab, `Shift` run, `L` block, `I` taunt.
